@@ -1,0 +1,3 @@
+# OpenAPI codegen output lands here.
+# Run `make codegen` (pnpm codegen:openapi) to regenerate `schema.ts` from
+# ../../../../../shared/openapi/openapi.yaml.

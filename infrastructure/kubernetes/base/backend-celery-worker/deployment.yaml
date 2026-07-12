@@ -1,0 +1,139 @@
+# Celery worker pool — durable async jobs (DRD §22.3 task queue).
+# WHY a separate Deployment from the FastAPI backend: workers and the API
+# scale on different signals (queue depth vs RPS), and worker OOMs should
+# not affect API serving capacity.
+#
+# WHY two queue groups by default (default + media): media jobs (video gen,
+# image gen) are minutes-long and should not block sub-second jobs (webhooks,
+# usage aggregation). Production typically splits this further per priority.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-celery-worker
+  labels:
+    app.kubernetes.io/name: backend-celery-worker
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    # WHY Recreate-style is *not* used here: we want overlap during deploys so
+    # in-flight tasks finish on the old pod under SIGTERM grace period.
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-celery-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-celery-worker
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: backend-python
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # Long jobs (video gen up to ~5 min). Give Celery time to finish or revoke.
+      terminationGracePeriodSeconds: 300
+      containers:
+        - name: worker
+          image: ghcr.io/openrouter/backend-python:0.1.0
+          imagePullPolicy: IfNotPresent
+          # WHY explicit command: same image is reused for API, beat, and worker.
+          # Concurrency picked from CPU request (1 worker per 0.5 vCPU).
+          command: ["celery"]
+          args:
+            - "-A"
+            - "app.infrastructure.celery.app"
+            - "worker"
+            - "--loglevel=info"
+            - "--queues=default,media"
+            - "--concurrency=4"
+            - "--max-tasks-per-child=200"      # mitigates slow leaks in pillow / ffmpeg
+            - "--prefetch-multiplier=1"        # fairness over throughput
+          env:
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: openrouter-env
+                  key: ENVIRONMENT
+                  optional: true
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-postgres
+                  key: dsn
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-redis
+                  key: url
+            - name: CELERY_BROKER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-redis
+                  key: url
+            - name: CELERY_RESULT_BACKEND
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-redis
+                  key: url
+            - name: OTEL_SERVICE_NAME
+              value: backend-celery-worker
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "1Gi"
+              ephemeral-storage: "500Mi"
+            limits:
+              cpu: "4000m"
+              memory: "4Gi"
+              ephemeral-storage: "5Gi"
+          # Liveness via Celery inspect ping — replaces the default httpd probe
+          # we cannot use for a non-HTTP workload.
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "celery -A app.infrastructure.celery.app inspect ping -d celery@$HOSTNAME --timeout=10"
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "test -f /tmp/worker_ready"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: workdir
+              mountPath: /var/work
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: workdir
+          emptyDir:
+            # Holds intermediate media files mid-job. ffmpeg can be hungry.
+            sizeLimit: 5Gi

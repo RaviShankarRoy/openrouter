@@ -1,0 +1,91 @@
+[project]
+name = "openrouter-backend"
+version = "0.1.0"
+description = "OpenRouter backend services — providers, billing, ML, MCP."
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "gunicorn>=23.0",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "alembic>=1.14",
+    "asyncpg>=0.30",
+    "redis[hiredis]>=5.2",
+    "httpx>=0.28",
+    "argon2-cffi>=23.1",
+    "python-jose[cryptography]>=3.3",
+    "authlib>=1.3",
+    "structlog>=24.4",
+    "prometheus-client>=0.21",
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.27",
+    "grpcio>=1.68",
+    "grpcio-tools>=1.68",
+    "protobuf>=5.28",
+    "nats-py>=2.9",
+    "celery[redis]>=5.4",
+    "tiktoken>=0.8",
+    "ulid-py>=1.1",
+    # provider SDKs
+    "openai>=1.55",
+    "anthropic>=0.40",
+    "google-genai>=0.3",
+    "mistralai>=1.2",
+    "cohere>=5.13",
+    "boto3>=1.35",
+    # billing
+    "stripe>=11.4",
+    # storage
+    "aioboto3>=13.2",
+    # ML — pinned heavy deps so they're explicit (DRD §22.2 image size)
+    "sentence-transformers>=3.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "respx>=0.21",
+    "testcontainers[postgres,redis]>=4.8",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "types-redis",
+    "types-protobuf",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["app/api/generated", "alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "ASYNC", "S", "C4", "SIM", "RET"]
+ignore = ["S101"]  # assert in tests
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+exclude = ["alembic/versions/", "app/api/generated/"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "-ra --strict-markers --cov=app --cov-report=term-missing"
+testpaths = ["tests"]

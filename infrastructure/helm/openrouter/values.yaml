@@ -1,0 +1,279 @@
+# Default values for the openrouter chart.
+# Every block is documented because operators rarely read the templates.
+# `values-prod.yaml` and `values-self-hosted.yaml` override these for two opposite use-cases.
+
+# ---------- Global ----------
+global:
+  # Override ingress hostnames everywhere.
+  domain: openrouter.example
+  # Image registry. Override for air-gapped (DRD IN-010) by pointing at a mirror.
+  imageRegistry: ghcr.io/openrouter
+  # Image pull secret name (created out-of-band for private registries).
+  imagePullSecrets: []
+  # Inject these labels into every workload.
+  commonLabels: {}
+  # If set, all child resources are pinned to this nodeSelector / tolerations.
+  nodeSelector: {}
+  tolerations: []
+  # Enables Prometheus Operator CRDs (ServiceMonitor, PrometheusRule).
+  monitoring:
+    enabled: true
+    prometheusReleaseLabel: kube-prometheus-stack
+  # Enables external-secrets.io integration.
+  externalSecrets:
+    enabled: true
+    secretStoreRef:
+      name: vault-backend
+      kind: SecretStore
+
+# ---------- Gateway (Go) ----------
+gateway:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: gateway-go
+    tag: ""        # falls back to .Chart.AppVersion
+    pullPolicy: IfNotPresent
+  # WHY containerPort split: same rationale as the raw manifests — separate
+  # scrape policy from request traffic.
+  ports:
+    http: 8080
+    metrics: 9091
+  service:
+    type: ClusterIP
+    httpPort: 80
+  resources:
+    requests:
+      cpu: 500m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  hpa:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 200
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    # Custom RPS metric — requires prometheus-adapter installed cluster-wide.
+    targetRPSPerPod: 2000
+  pdb:
+    enabled: true
+    minAvailable: 50%
+  podAnnotations: {}
+  podLabels: {}
+  # Provider catalogue. Patched into a ConfigMap. See base for the schema.
+  providers:
+    version: 1
+    defaults:
+      timeout_ms: 30000
+      max_retries: 2
+      circuit_breaker:
+        max_failures: 5
+        window_seconds: 30
+        cool_down_seconds: 30
+    list:
+      - id: openai
+        kind: openai
+        base_url: https://api.openai.com
+        weight: 100
+        models: ["gpt-4o", "gpt-4o-mini"]
+      - id: anthropic
+        kind: anthropic
+        base_url: https://api.anthropic.com
+        weight: 100
+        models: ["claude-3-5-sonnet"]
+      # OpenAI-compatible aggregators — keys come from openrouter-providers Secret
+      # (Vault path: data/openrouter/providers). Add TOGETHER_API_KEY,
+      # FIREWORKS_API_KEY to that path in Vault when enabling these.
+      - id: together
+        kind: openai
+        base_url: https://api.together.xyz/v1
+        weight: 80
+        models:
+          - "qwen/qwen3.6-27b"
+          - "qwen/qwen3.6-35b-a3b"
+          - "qwen/qwen3.5-35b-a3b"
+      - id: fireworks
+        kind: openai
+        base_url: https://api.fireworks.ai/inference/v1
+        weight: 80
+        models:
+          - "google/gemma-4-31b"
+          - "google/gemma-4-26b-moe"
+          - "qwen/qwen3.5-122b-a10b"
+      # Self-host (in-cluster Ollama). Disabled by default — set weight > 0
+      # in values-self-hosted.yaml to enable.
+      - id: ollama
+        kind: openai
+        base_url: http://ollama.openrouter.svc.cluster.local:11434/v1
+        weight: 0
+        models:
+          - "google/gemma-4-e4b"
+          - "google/gemma-4-e2b"
+  networkPolicy:
+    enabled: true
+  # Override: which namespaces / pod selectors may reach the gateway.
+  ingressFrom:
+    namespaces: ["ingress-nginx"]
+    pods: ["frontend-web"]
+
+# ---------- Backend (Python) ----------
+backend:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: backend-python
+    tag: ""
+    pullPolicy: IfNotPresent
+  ports:
+    http: 8000
+    grpc: 50051
+    metrics: 9092
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 1Gi
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 50
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 75
+    targetRPSPerPod: 300
+  pdb:
+    enabled: true
+    minAvailable: 50%
+  networkPolicy:
+    enabled: true
+
+# ---------- Celery Worker ----------
+celeryWorker:
+  enabled: true
+  replicaCount: 2
+  image:
+    # Same image as backend; only the entrypoint differs.
+    repository: backend-python
+    tag: ""
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+  concurrency: 4
+  queues: ["default", "media"]
+  # WHY no HPA by default: queue-depth based scaling needs KEDA. Operators
+  # opt in by setting hpa.enabled and providing a KEDA ScaledObject out-of-band.
+  hpa:
+    enabled: false
+
+# ---------- Celery Beat ----------
+celeryBeat:
+  enabled: true
+  # Single replica enforced in template — value is ignored if > 1.
+  image:
+    repository: backend-python
+    tag: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ---------- Frontend (Next.js) ----------
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: frontend-web
+    tag: ""
+    pullPolicy: IfNotPresent
+  ports:
+    http: 3000
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 75
+
+# ---------- Ingress ----------
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    api: api.openrouter.example
+    app: app.openrouter.example
+    docs: docs.openrouter.example
+  tls:
+    enabled: true
+    issuer: letsencrypt-prod
+  annotations: {}
+
+# ---------- External Dependencies ----------
+postgres:
+  # If false, the chart expects DSN to be supplied via secret (managed RDS).
+  embedded: false
+  dsn: ""              # only used when embedded=false
+  # Settings for the embedded variant (Patroni operator chart is a sub-dependency).
+  embeddedSize: 50Gi
+
+redis:
+  embedded: false
+  url: ""
+  embeddedMaxMemory: 1gb
+
+nats:
+  # NATS is in-cluster everywhere; toggle if integrating with an external NATS.
+  embedded: true
+  replicas: 3
+  storage: 10Gi
+
+# ---------- Stripe ----------
+stripe:
+  # Provided via existing secret name — chart never templates raw Stripe keys.
+  existingSecretName: openrouter-stripe
+  apiKeyKey: api_key
+  webhookSecretKey: webhook_secret
+
+# ---------- Service mesh / observability ----------
+otel:
+  endpoint: http://otel-collector.observability.svc.cluster.local:4317
+serviceMonitor:
+  enabled: true
+prometheusRule:
+  enabled: true
+
+# ---------- Pod security ----------
+# These defaults match Pod Security Standards "restricted".
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop: ["ALL"]

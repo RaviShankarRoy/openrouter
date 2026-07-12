@@ -1,0 +1,51 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+dist/
+build/
+
+# Go
+gateway-go/bin/
+*.test
+*.out
+coverage.txt
+
+# Node / TypeScript
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Local infra data
+pgdata/
+redisdata/
+miniodata/
+
+# Generated
+shared/proto/gen/
+shared/openapi/gen/
+gateway-go/internal/proto/
+backend-python/app/infrastructure/grpc/gen/

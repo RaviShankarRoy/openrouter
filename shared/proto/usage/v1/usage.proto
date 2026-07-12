@@ -1,0 +1,42 @@
+// Usage events emitted by the Go gateway after every completed request.
+// Consumed by the Python metering worker via NATS JetStream.
+syntax = "proto3";
+
+package openrouter.usage.v1;
+
+option go_package = "github.com/openrouter/gateway-go/internal/proto/usage/v1;usagev1";
+
+import "google/protobuf/timestamp.proto";
+
+message UsageEvent {
+  string event_id = 1;                    // ULID
+  google.protobuf.Timestamp emitted_at = 2;
+  string trace_id = 3;
+  string request_id = 4;
+
+  string org_id = 5;
+  string user_id = 6;
+  string key_id = 7;
+
+  string model = 8;
+  string provider = 9;
+  string provider_endpoint = 10;          // region-specific identifier
+
+  TokenCounts tokens = 11;
+  double cost_usd = 12;                   // gateway estimate; backend re-computes
+  uint32 latency_ms = 13;
+  uint32 status_code = 14;
+  string finish_reason = 15;              // stop | length | tool_calls | content_filter | error
+
+  bool cache_hit = 16;
+  string cache_layer = 17;                // "" | l1_exact | l2_semantic
+  bool failover_used = 18;
+  uint32 retry_count = 19;
+}
+
+message TokenCounts {
+  uint32 input = 1;
+  uint32 output = 2;
+  uint32 cached_input = 3;                // provider-side prompt caching
+  uint32 reasoning = 4;                   // o-series, DeepSeek-R1
+}

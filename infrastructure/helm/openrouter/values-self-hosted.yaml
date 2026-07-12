@@ -1,0 +1,68 @@
+# Self-hosted single-cluster all-in-one (DRD IN-009).
+# All dependencies in-cluster, no external secret store. Suitable for a small
+# k3s / minikube install.
+global:
+  domain: openrouter.local
+  monitoring:
+    enabled: false
+  externalSecrets:
+    enabled: false
+
+gateway:
+  replicaCount: 2
+  resources:
+    requests: {cpu: 200m, memory: 128Mi}
+    limits:   {memory: 384Mi}
+  hpa:
+    enabled: false
+
+backend:
+  replicaCount: 2
+  resources:
+    requests: {cpu: 250m, memory: 384Mi}
+    limits:   {cpu: 1000m, memory: 1Gi}
+  hpa:
+    enabled: false
+
+celeryWorker:
+  replicaCount: 1
+  resources:
+    requests: {cpu: 250m, memory: 384Mi}
+    limits:   {cpu: 1000m, memory: 1Gi}
+
+celeryBeat:
+  enabled: true
+
+frontend:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+postgres:
+  embedded: true
+  embeddedSize: 20Gi
+redis:
+  embedded: true
+  embeddedMaxMemory: 512mb
+nats:
+  embedded: true
+  replicas: 1
+  storage: 5Gi
+
+ingress:
+  className: nginx
+  hosts:
+    api: api.openrouter.local
+    app: app.openrouter.local
+    docs: docs.openrouter.local
+  tls:
+    enabled: false   # operator can layer their own TLS
+
+stripe:
+  # Self-hosted typically does not bill via Stripe. Disable the Stripe-secret mount.
+  existingSecretName: ""
+
+serviceMonitor:
+  enabled: false
+prometheusRule:
+  enabled: false

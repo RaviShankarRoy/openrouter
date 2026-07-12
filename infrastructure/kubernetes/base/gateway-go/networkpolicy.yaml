@@ -1,0 +1,97 @@
+# Default-deny + explicit allow.
+# WHY the gateway only accepts from ingress-nginx and the frontend BFF:
+# direct pod-to-gateway calls from inside the cluster (other than these two)
+# would bypass auth/rate-limit at L7, so we block them at L3.
+#
+# Egress: providers (any), backend-python (gRPC + HTTP), redis, nats, otel-collector.
+# WHY allow 0.0.0.0/0 for egress to providers: the provider list is large and
+# changes; outbound TLS to ports 443 is the only practical filter.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gateway-go
+  labels:
+    app.kubernetes.io/name: gateway-go
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gateway-go
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: frontend-web
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Prometheus scraping comes from the monitoring namespace.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9091
+  egress:
+    # DNS to kube-dns / coredns
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Backend (gRPC + HTTP)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: backend-python
+      ports:
+        - protocol: TCP
+          port: 8000
+        - protocol: TCP
+          port: 50051
+    # Redis (rate limit, auth cache, L1 response cache)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # NATS (usage events)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: nats
+      ports:
+        - protocol: TCP
+          port: 4222
+    # OTEL collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 4317
+    # Outbound to LLM providers — TLS only.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            # WHY this exception list: deny traffic to the cluster CIDR and node
+            # metadata service so a compromised gateway pod can't pivot internally.
+            except:
+              - 169.254.169.254/32  # AWS metadata
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443

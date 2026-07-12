@@ -1,0 +1,131 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openrouter.fullname" . }}-gateway
+  labels:
+    {{- include "openrouter.componentLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+spec:
+  {{- if not .Values.gateway.hpa.enabled }}
+  replicas: {{ .Values.gateway.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "openrouter.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openrouter.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 8 }}
+        {{- with .Values.gateway.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # Restarts pods when the providers ConfigMap changes.
+        checksum/providers: {{ .Values.gateway.providers | toYaml | sha256sum }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.gateway.ports.metrics }}"
+        prometheus.io/path: "/metrics"
+        {{- with .Values.gateway.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "openrouter.serviceAccountName" (dict "ctx" . "component" "gateway") }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "openrouter.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 14 }}
+      {{- with .Values.global.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gateway
+          image: {{ include "openrouter.image" (dict "ctx" . "image" .Values.gateway.image) }}
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.ports.http }}
+            - name: metrics
+              containerPort: {{ .Values.gateway.ports.metrics }}
+          env:
+            - name: GATEWAY_HTTP_PORT
+              value: "{{ .Values.gateway.ports.http }}"
+            - name: GATEWAY_METRICS_PORT
+              value: "{{ .Values.gateway.ports.metrics }}"
+            - name: GATEWAY_BACKEND_GRPC
+              value: "{{ include "openrouter.fullname" . }}-backend:{{ .Values.backend.ports.grpc }}"
+            - name: GATEWAY_PROVIDER_CONFIG
+              value: /etc/gateway/providers.yaml
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-redis
+                  key: url
+            - name: NATS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-nats
+                  key: url
+            - name: OTEL_SERVICE_NAME
+              value: gateway-go
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otel.endpoint | quote }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "openrouter.fullname" . }}-env
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            failureThreshold: 30
+            periodSeconds: 1
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: providers
+              mountPath: /etc/gateway
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /var/cache/gateway
+      volumes:
+        - name: providers
+          configMap:
+            name: {{ include "openrouter.fullname" . }}-providers
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: cache
+          emptyDir:
+            sizeLimit: 256Mi
+{{- end }}

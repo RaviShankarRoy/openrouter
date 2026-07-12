@@ -1,0 +1,104 @@
+# Celery beat — single-replica scheduler (DRD §22.3).
+# WHY exactly 1 replica and Recreate strategy: running two beats causes
+# duplicate periodic tasks. The scheduler is cheap; the rolling-restart pause
+# (a few seconds without new schedules emitted) is acceptable.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-celery-beat
+  labels:
+    app.kubernetes.io/name: backend-celery-beat
+    app.kubernetes.io/component: scheduler
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-celery-beat
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-celery-beat
+        app.kubernetes.io/component: scheduler
+    spec:
+      serviceAccountName: backend-python
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: beat
+          image: ghcr.io/openrouter/backend-python:0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["celery"]
+          args:
+            - "-A"
+            - "app.infrastructure.celery.app"
+            - "beat"
+            - "--loglevel=info"
+            - "--scheduler=redbeat.RedBeatScheduler"  # Redis-backed lock prevents dupes if mis-scaled.
+          env:
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: openrouter-env
+                  key: ENVIRONMENT
+                  optional: true
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-redis
+                  key: url
+            - name: CELERY_BROKER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-redis
+                  key: url
+            - name: REDBEAT_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-redis
+                  key: url
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "test -f /tmp/celerybeat-schedule.db || ls /var/run/celery/beat.pid"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run/celery
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: run
+          emptyDir:
+            sizeLimit: 16Mi

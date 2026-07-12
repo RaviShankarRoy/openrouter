@@ -1,0 +1,53 @@
+# Production overlay.
+# WHY skip the in-cluster Postgres/Redis: prod uses RDS Aurora + ElastiCache
+# provisioned by Terraform (DRD §22.3 managed services). Removing them keeps
+# the manifest deterministic.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: openrouter
+
+commonLabels:
+  app.kubernetes.io/instance: openrouter-prod
+  environment: prod
+
+resources:
+  - ../../base
+
+# WHY pin by digest in prod: image tags are mutable; digests are not.
+# Tooling (release.yml) injects the actual digest at apply time.
+images:
+  - name: ghcr.io/openrouter/gateway-go
+    newName: ghcr.io/openrouter/gateway-go
+    digest: sha256:DEADBEEFREPLACEINRELEASEPIPELINE000000000000000000000000000000
+  - name: ghcr.io/openrouter/backend-python
+    digest: sha256:DEADBEEFREPLACEINRELEASEPIPELINE000000000000000000000000000001
+  - name: ghcr.io/openrouter/frontend-web
+    digest: sha256:DEADBEEFREPLACEINRELEASEPIPELINE000000000000000000000000000002
+
+patches:
+  - path: patches/replicas.yaml
+  - path: patches/topology.yaml
+  - path: patches/ingress-host.yaml
+  # Removes the StatefulSets we don't run in prod (managed services replace them).
+  - patch: |
+      $patch: delete
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: postgres
+  - patch: |
+      $patch: delete
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: redis
+
+configMapGenerator:
+  - name: openrouter-env
+    behavior: create
+    literals:
+      - ENVIRONMENT=prod
+      - LOG_LEVEL=info
+      - NEXT_PUBLIC_API_BASE_URL=https://api.openrouter.example
+      - NEXTAUTH_URL=https://app.openrouter.example

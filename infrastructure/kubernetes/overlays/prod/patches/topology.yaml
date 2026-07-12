@@ -1,0 +1,37 @@
+# Stricter spread in prod: DoNotSchedule on the zone key so we never have
+# >1 skew across AZs. NFR-001 demands multi-AZ resilience.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-go
+spec:
+  template:
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway-go
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway-go
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-python
+spec:
+  template:
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: backend-python

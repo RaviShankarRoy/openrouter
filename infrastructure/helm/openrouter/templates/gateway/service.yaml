@@ -1,0 +1,33 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openrouter.fullname" . }}-gateway
+  labels:
+    {{- include "openrouter.componentLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+spec:
+  type: {{ .Values.gateway.service.type }}
+  selector:
+    {{- include "openrouter.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.gateway.service.httpPort }}
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openrouter.fullname" . }}-gateway-metrics
+  labels:
+    {{- include "openrouter.componentLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+    monitoring: prometheus
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    {{- include "openrouter.selectorLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+  ports:
+    - name: metrics
+      port: {{ .Values.gateway.ports.metrics }}
+      targetPort: metrics
+{{- end }}

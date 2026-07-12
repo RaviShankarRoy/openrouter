@@ -1,0 +1,64 @@
+# Autoscaler for the Go gateway (DRD IN-003 — HPA on RPS and CPU).
+# WHY two metrics (RPS + CPU): RPS is the leading indicator and reacts faster,
+# CPU is the safety net for paths that are CPU-bound (cache miss + adapter
+# normalisation). Either tripping triggers scale-up.
+#
+# WHY 5 minimum: enough to absorb a single AZ outage without immediate scale-up,
+# matches multi-AZ topology spread.
+# WHY 200 maximum: sized for ~500K RPS at 2.5K RPS/pod budget. Real ceiling
+# is enforced by node-group capacity in Terraform.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gateway-go
+  labels:
+    app.kubernetes.io/name: gateway-go
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gateway-go
+  minReplicas: 5
+  maxReplicas: 200
+  metrics:
+    # Custom RPS metric exposed by the gateway and rolled up via prometheus-adapter.
+    # Target: 2,000 RPS per pod (leaves 20% headroom under our per-pod 2,500 RPS budget).
+    - type: Pods
+      pods:
+        metric:
+          name: gateway_proxy_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "2000"
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      # Aggressive: a traffic burst should add capacity within 30s.
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100  # double the pods if needed
+          periodSeconds: 30
+        - type: Pods
+          value: 10   # but at least +10 per 30s for cold-start cases
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      # Conservative: avoid thrashing. 5 min stabilisation, max 10% per minute.
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+      selectPolicy: Min

@@ -1,0 +1,82 @@
+# Dev = 1 of everything to fit in a laptop kind cluster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-go
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-python
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-celery-worker
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-web
+spec:
+  replicas: 1
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gateway-go
+spec:
+  minReplicas: 1
+  maxReplicas: 3
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-python
+spec:
+  minReplicas: 1
+  maxReplicas: 3
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-web
+spec:
+  minReplicas: 1
+  maxReplicas: 2
+---
+# Dev clusters often have 1 node — relax PDB so drains are not impossible.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway-go
+spec:
+  minAvailable: 0
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-python
+spec:
+  minAvailable: 0
+---
+# NATS in dev: 1 node is enough.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  replicas: 1

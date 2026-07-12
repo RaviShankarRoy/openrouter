@@ -1,0 +1,24 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openrouter.fullname" . }}-providers
+  labels:
+    {{- include "openrouter.componentLabels" (dict "ctx" . "component" "gateway") | nindent 4 }}
+data:
+  providers.yaml: |
+{{ toYaml .Values.gateway.providers | indent 4 }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openrouter.fullname" . }}-env
+  labels:
+    {{- include "openrouter.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Release.Namespace | quote }}
+  LOG_LEVEL: "info"
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.otel.endpoint | quote }}
+  NEXT_PUBLIC_API_BASE_URL: {{ printf "https://%s" .Values.ingress.hosts.api | quote }}
+  NEXTAUTH_URL: {{ printf "https://%s" .Values.ingress.hosts.app | quote }}

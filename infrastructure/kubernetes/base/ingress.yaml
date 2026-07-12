@@ -1,0 +1,95 @@
+# Ingress: three hostnames on the same controller.
+#   api.openrouter.example   -> gateway-go     (chat completions, /v1/*)
+#   app.openrouter.example   -> frontend-web   (dashboard, playground)
+#   docs.openrouter.example  -> frontend-web   (docs are part of the Next.js app)
+#
+# WHY a single Nginx ingress with multiple hosts: minimises TLS cert sprawl
+# and lets us share rate-limit / WAF policies. Cloudflare sits in front for
+# DDoS + edge caching (DRD SE-005, SE-006).
+#
+# WHY snippet annotations for /v1/*: SSE requires no buffering and longer
+# read timeouts. We set them only on the API host to avoid surprising the
+# dashboard host.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openrouter-api
+  labels:
+    app.kubernetes.io/name: openrouter
+    app.kubernetes.io/component: ingress
+  annotations:
+    # WHY the proxy buffering settings: SSE streams must flush per chunk.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # max stream length
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"      # for image uploads
+    # cert-manager issues / renews via Let's Encrypt.
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Force HTTPS-only (NFR + SE-001 TLS 1.3 everywhere).
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+    # Per-IP rate-limit at edge as a defense-in-depth before the gateway's own limiter.
+    nginx.ingress.kubernetes.io/limit-rps: "200"
+    nginx.ingress.kubernetes.io/limit-connections: "100"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.openrouter.example
+      secretName: openrouter-api-tls
+  rules:
+    - host: api.openrouter.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-go
+                port:
+                  name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openrouter-app
+  labels:
+    app.kubernetes.io/name: openrouter
+    app.kubernetes.io/component: ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+    # Dashboard responses can be larger (HTML + JSON islands), but no SSE.
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - app.openrouter.example
+        - docs.openrouter.example
+      secretName: openrouter-web-tls
+  rules:
+    - host: app.openrouter.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-web
+                port:
+                  name: http
+    - host: docs.openrouter.example
+      http:
+        paths:
+          # Docs live under /docs in the Next.js app; rewrite is unnecessary.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-web
+                port:
+                  name: http

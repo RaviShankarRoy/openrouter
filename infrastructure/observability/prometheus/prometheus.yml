@@ -1,0 +1,66 @@
+# Prometheus scrape config — used by docker-compose.observability.yml and as the
+# basis for the kube-prometheus-stack `additionalScrapeConfigs` in production.
+#
+# Service-discovery rules:
+#   - In dev (docker-compose), services are scraped via static_configs.
+#   - In k8s, ServiceMonitors generated from the kustomize overlay take over.
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: "${CLUSTER:-dev}"
+    region: "${REGION:-local}"
+
+rule_files:
+  - /etc/prometheus/rules/*.yaml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: gateway-go
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["gateway-go:8081"]
+        labels: { service: gateway-go }
+
+  - job_name: backend-python
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend-python:8000"]
+        labels: { service: backend-python }
+
+  - job_name: backend-grpc
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend-python:9092"]
+        labels: { service: backend-grpc }
+
+  - job_name: frontend-web
+    metrics_path: /api/metrics
+    static_configs:
+      - targets: ["frontend-web:3000"]
+        labels: { service: frontend-web }
+
+  - job_name: nats
+    static_configs:
+      - targets: ["nats:7777"]
+        labels: { service: nats }
+
+  - job_name: redis-exporter
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+        labels: { service: redis }
+
+  - job_name: postgres-exporter
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+        labels: { service: postgres }

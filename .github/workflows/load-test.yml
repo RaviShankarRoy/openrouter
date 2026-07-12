@@ -1,0 +1,31 @@
+name: load-test
+
+on:
+  schedule:
+    - cron: "0 5 * * *"  # nightly 05:00 UTC
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "k6 scenario (smoke|load|spike|stress|streaming)"
+        required: false
+        default: "smoke"
+
+# k6 against the staging gateway. PRs run only `smoke` (cheap); nightly runs
+# the full `load` to catch P99 regressions over time.
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: Run k6
+        env:
+          GATEWAY_URL: ${{ secrets.STAGING_GATEWAY_URL }}
+          API_KEY: ${{ secrets.STAGING_LOAD_TEST_KEY }}
+        run: |
+          scenario=${{ github.event.inputs.scenario || 'smoke' }}
+          k6 run --quiet --summary-export=results.json tools/load-tests/k6/scenarios/${scenario}.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k6-results
+          path: results.json

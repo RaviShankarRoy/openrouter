@@ -1,0 +1,36 @@
+# Provider catalogue. The gateway reads this at startup and on SIGHUP
+# (see ARCHITECTURE.md §2.1 — hot-reload of routing config).
+# Schema mirrors gateway-go/configs/providers.yaml.
+# WHY a ConfigMap and not bundled into the image: provider weights, fallback
+# chains, and timeouts change far more often than the binary, and we want
+# kubectl rollout-free updates for non-binary changes.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-go-providers
+  labels:
+    app.kubernetes.io/name: gateway-go
+data:
+  providers.yaml: |
+    # WARNING: this is the BASE config. Overlays patch it with environment-specific
+    # endpoints (e.g., dev points at the mock provider service).
+    version: 1
+    defaults:
+      timeout_ms: 30000
+      max_retries: 2
+      circuit_breaker:
+        # 5 failures in 30s opens the breaker (matches DRD §4 failure modes).
+        max_failures: 5
+        window_seconds: 30
+        cool_down_seconds: 30
+    providers:
+      - id: openai
+        kind: openai
+        base_url: https://api.openai.com
+        weight: 100
+        models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+      - id: anthropic
+        kind: anthropic
+        base_url: https://api.anthropic.com
+        weight: 100
+        models: ["claude-3-5-sonnet", "claude-3-5-haiku"]

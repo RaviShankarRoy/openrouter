@@ -1,0 +1,157 @@
+# Alert rules. Severities map to alertmanager routes:
+#   page = PagerDuty incident, 24/7
+#   ticket = Slack #ops channel, business hours
+#
+# Thresholds derived from DRD NFRs:
+#   NFR-001 (99.95% availability) — error rate budget = 0.05%
+#   NFR-002 (<15µs gateway P99)
+#   NFR-003 (<200ms TTFT)
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: openrouter-alerts
+  labels:
+    app.kubernetes.io/name: openrouter
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: gateway-availability
+      interval: 30s
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(gateway_http_requests_total{status=~"5.."}[5m]))
+              / sum(rate(gateway_http_requests_total[5m])) > 0.01
+          for: 5m
+          labels:
+            severity: page
+            service: gateway-go
+          annotations:
+            summary: "Gateway 5xx > 1% (5m)"
+            description: "Error rate is {{ $value | humanizePercentage }} on gateway-go. SLO budget burning."
+            runbook_url: "https://docs.openrouter.example/runbooks/gateway-go.md#high-error-rate"
+        - alert: HighLatency
+          # Gateway-attributable latency only (excludes provider time).
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(gateway_proxy_request_duration_seconds_bucket{stage="middleware"}[5m])) by (le)
+            ) > 0.0005
+          for: 10m
+          labels:
+            severity: page
+            service: gateway-go
+          annotations:
+            summary: "Gateway middleware P99 > 500µs"
+            description: "P99 middleware latency is {{ $value }}s — exceeds NFR-002 budget."
+            runbook_url: "https://docs.openrouter.example/runbooks/gateway-go.md#high-latency"
+        - alert: GatewayDown
+          expr: up{job="gateway-go"} == 0
+          for: 2m
+          labels:
+            severity: page
+            service: gateway-go
+          annotations:
+            summary: "Gateway pod {{ $labels.pod }} down"
+            description: "Pod has been unreachable for 2m."
+
+    - name: provider-health
+      interval: 30s
+      rules:
+        - alert: ProviderDown
+          expr: |
+            sum by (provider) (rate(gateway_provider_requests_total{status=~"5..|timeout"}[5m]))
+              / sum by (provider) (rate(gateway_provider_requests_total[5m])) > 0.50
+          for: 5m
+          labels:
+            severity: page
+          annotations:
+            summary: "Provider {{ $labels.provider }} >50% errors"
+            description: "Circuit breaker likely open. Fallbacks should be active — verify."
+            runbook_url: "https://docs.openrouter.example/runbooks/gateway-go.md#provider-failures"
+        - alert: ProviderDegraded
+          expr: |
+            histogram_quantile(0.95,
+              sum by (provider, le) (rate(gateway_provider_request_duration_seconds_bucket[5m]))
+            ) > 5
+          for: 10m
+          labels:
+            severity: ticket
+          annotations:
+            summary: "Provider {{ $labels.provider }} P95 > 5s"
+
+    - name: backend-health
+      interval: 30s
+      rules:
+        - alert: BackendHighErrorRate
+          expr: |
+            sum(rate(backend_http_requests_total{status=~"5.."}[5m]))
+              / sum(rate(backend_http_requests_total[5m])) > 0.02
+          for: 10m
+          labels:
+            severity: page
+            service: backend-python
+          annotations:
+            summary: "Backend 5xx > 2%"
+            runbook_url: "https://docs.openrouter.example/runbooks/backend-python.md"
+        - alert: DatabaseConnectionPoolExhausted
+          expr: backend_db_pool_in_use / backend_db_pool_size > 0.9
+          for: 5m
+          labels:
+            severity: page
+            service: backend-python
+          annotations:
+            summary: "DB pool >90% saturated"
+            runbook_url: "https://docs.openrouter.example/runbooks/backend-python.md#db-connection-exhaustion"
+        - alert: CeleryBacklog
+          expr: celery_queue_length > 1000
+          for: 15m
+          labels:
+            severity: ticket
+          annotations:
+            summary: "Celery queue backlog {{ $value }}"
+            runbook_url: "https://docs.openrouter.example/runbooks/backend-python.md#celery-backlog"
+
+    - name: business-metrics
+      interval: 60s
+      rules:
+        - alert: LowCredits
+          expr: |
+            count(billing_org_credit_balance_usd < 5) by (org_id) > 0
+          for: 30m
+          labels:
+            severity: ticket
+          annotations:
+            summary: "{{ $value }} orgs below $5 credits"
+            description: "Billing notifications should fire automatically — this is the safety net."
+        - alert: BillingProcessorBehind
+          expr: |
+            time() - billing_aggregation_last_success_timestamp > 900
+          for: 5m
+          labels:
+            severity: page
+          annotations:
+            summary: "Billing aggregation lagging > 15m"
+            description: "Usage events are accumulating in NATS. Check celery-worker pods."
+
+    - name: capacity
+      interval: 60s
+      rules:
+        - alert: PodMemoryPressure
+          expr: |
+            (container_memory_working_set_bytes{namespace="openrouter"}
+              / container_spec_memory_limit_bytes{namespace="openrouter"}) > 0.9
+          for: 10m
+          labels:
+            severity: ticket
+          annotations:
+            summary: "Container {{ $labels.container }} >90% memory"
+        - alert: HPAMaxReplicas
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas{namespace="openrouter"}
+              == kube_horizontalpodautoscaler_spec_max_replicas{namespace="openrouter"}
+          for: 15m
+          labels:
+            severity: page
+          annotations:
+            summary: "HPA {{ $labels.horizontalpodautoscaler }} at max replicas"
+            description: "Capacity ceiling reached — investigate node group autoscaler."

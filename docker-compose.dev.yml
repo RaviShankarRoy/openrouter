@@ -1,0 +1,168 @@
+# docker-compose.dev.yml — overlay that adds the app services on top of the
+# infra defined in docker-compose.yml.
+#
+# Used as:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#   make up-docker                # convenience wrapper around the same
+#
+# Design choices:
+#   - Upstream language base images (no Dockerfile.dev). First run installs
+#     dependencies; subsequent runs are fast thanks to named cache volumes.
+#   - Source is bind-mounted so file edits trigger hot reload (air, uvicorn,
+#     next dev). The trade-off is platform-dependent FS performance on macOS.
+#   - Ports + env match Procfile.dev so devs can swap paths without surprises.
+#   - Each app service `depends_on` only the infra it actually uses, so a
+#     single broken service doesn't block the others.
+
+name: openrouter-dev
+
+services:
+  gateway:
+    image: golang:1.24-alpine
+    container_name: or-gateway
+    working_dir: /app
+    env_file: .env
+    environment:
+      # Override DSNs/URLs so the gateway talks to compose-internal hosts.
+      REDIS_URL: redis://redis:6379/0
+      NATS_URL: nats://nats:4222
+      GATEWAY_BACKEND_GRPC: backend:50051
+    volumes:
+      - ./gateway-go:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    ports:
+      - "8080:8080"
+      - "9091:9091"
+    depends_on:
+      redis: { condition: service_healthy }
+      nats:  { condition: service_healthy }
+    # Install air once into the module cache, then run it. Air watches *.go
+    # files (see gateway-go/.air.toml) and rebuilds on change.
+    command: >
+      sh -c "
+        command -v air >/dev/null 2>&1 || go install github.com/air-verse/air@latest &&
+        PATH=/go/bin:$$PATH air -c .air.toml
+      "
+
+  backend:
+    image: python:3.12-slim
+    container_name: or-backend
+    working_dir: /app
+    env_file: .env
+    environment:
+      POSTGRES_DSN: postgresql+asyncpg://openrouter:dev_only_password@postgres:5432/openrouter
+      REDIS_URL: redis://redis:6379/0
+      NATS_URL: nats://nats:4222
+      S3_ENDPOINT: http://minio:9000
+    volumes:
+      - ./backend-python:/app
+      - py-venv:/opt/venv
+    ports:
+      - "8000:8000"
+      - "9092:9092"
+      - "50051:50051"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      nats:     { condition: service_healthy }
+    command: >
+      sh -c "
+        apt-get update -qq && apt-get install -y -qq --no-install-recommends gcc libpq-dev curl &&
+        test -d /opt/venv || python -m venv /opt/venv &&
+        /opt/venv/bin/pip install -q --upgrade pip wheel &&
+        /opt/venv/bin/pip install -q -e '.[dev]' &&
+        /opt/venv/bin/alembic upgrade head &&
+        /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+  worker:
+    image: python:3.12-slim
+    container_name: or-worker
+    working_dir: /app
+    env_file: .env
+    environment:
+      POSTGRES_DSN: postgresql+asyncpg://openrouter:dev_only_password@postgres:5432/openrouter
+      REDIS_URL: redis://redis:6379/0
+      NATS_URL: nats://nats:4222
+    volumes:
+      - ./backend-python:/app
+      - py-venv:/opt/venv         # shares venv with `backend` — avoids dup install
+    depends_on:
+      backend: { condition: service_started }
+    command: >
+      sh -c "
+        # Wait for backend to finish dep install (shared venv).
+        until [ -x /opt/venv/bin/celery ]; do sleep 2; done &&
+        /opt/venv/bin/celery -A app.infrastructure.celery_app worker -l info
+      "
+
+  beat:
+    image: python:3.12-slim
+    container_name: or-beat
+    working_dir: /app
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend-python:/app
+      - py-venv:/opt/venv
+    depends_on:
+      backend: { condition: service_started }
+    command: >
+      sh -c "
+        until [ -x /opt/venv/bin/celery ]; do sleep 2; done &&
+        /opt/venv/bin/celery -A app.infrastructure.celery_app beat -l info
+      "
+
+  frontend:
+    image: node:20-alpine
+    container_name: or-frontend
+    working_dir: /app
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
+      NEXTAUTH_URL: http://localhost:3000
+    volumes:
+      - ./frontend-web:/app
+      - frontend-node-modules:/app/node_modules
+      - frontend-next-cache:/app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend: { condition: service_started }
+    command: >
+      sh -c "
+        corepack enable &&
+        corepack prepare pnpm@9.15.0 --activate &&
+        pnpm install --frozen-lockfile &&
+        pnpm dev
+      "
+
+  mocks:
+    image: python:3.12-slim
+    container_name: or-mocks
+    working_dir: /app
+    environment:
+      MOCK_PORT: "9100"
+    volumes:
+      - ./tools/mock-providers:/app
+      - mocks-venv:/opt/venv
+    ports:
+      - "9100:9100"
+    command: >
+      sh -c "
+        test -d /opt/venv || python -m venv /opt/venv &&
+        /opt/venv/bin/pip install -q --upgrade pip wheel &&
+        /opt/venv/bin/pip install -q -e '.[dev]' &&
+        /opt/venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 9100 --reload
+      "
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
+  py-venv:
+  mocks-venv:
+  frontend-node-modules:
+  frontend-next-cache:

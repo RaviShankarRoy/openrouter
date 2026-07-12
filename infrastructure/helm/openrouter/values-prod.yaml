@@ -1,0 +1,70 @@
+# Production overrides — managed services, multi-AZ, higher floors.
+global:
+  domain: openrouter.example
+  imageRegistry: ghcr.io/openrouter
+  monitoring:
+    enabled: true
+  externalSecrets:
+    enabled: true
+    secretStoreRef:
+      name: vault-backend
+      kind: SecretStore
+
+gateway:
+  replicaCount: 10
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  hpa:
+    minReplicas: 10
+    maxReplicas: 200
+
+backend:
+  replicaCount: 5
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+    limits:
+      cpu: 4000m
+      memory: 2Gi
+  hpa:
+    minReplicas: 5
+    maxReplicas: 50
+
+celeryWorker:
+  replicaCount: 4
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 2Gi
+    limits:
+      cpu: 8000m
+      memory: 8Gi
+
+frontend:
+  replicaCount: 4
+  hpa:
+    minReplicas: 4
+    maxReplicas: 20
+
+# Managed services in prod.
+postgres:
+  embedded: false
+redis:
+  embedded: false
+nats:
+  embedded: true   # still in-cluster; no managed offering
+  replicas: 5
+  storage: 50Gi
+
+ingress:
+  hosts:
+    api: api.openrouter.example
+    app: app.openrouter.example
+    docs: docs.openrouter.example
+  tls:
+    issuer: letsencrypt-prod

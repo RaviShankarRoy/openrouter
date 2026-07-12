@@ -1,0 +1,55 @@
+# ServiceMonitors for Prometheus Operator. We target the headless metrics
+# Services so each pod is scraped individually (no Service VIP load-balancing
+# of /metrics scrapes — that would alias time-series across replicas).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gateway-go
+  labels:
+    app.kubernetes.io/name: gateway-go
+    # Operator selects ServiceMonitors by this release label by convention.
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway-go
+      monitoring: prometheus
+  namespaceSelector:
+    matchNames: [openrouter]
+  endpoints:
+    - port: metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      path: /metrics
+      # Drop high-cardinality labels at ingest. WHY: per ARCHITECTURE.md §2.3
+      # we never label by user_id or request_id, but a bug could regress this.
+      metricRelabelings:
+        - sourceLabels: [user_id]
+          action: labeldrop
+        - sourceLabels: [request_id]
+          action: labeldrop
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend-python
+  labels:
+    app.kubernetes.io/name: backend-python
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-python
+      monitoring: prometheus
+  namespaceSelector:
+    matchNames: [openrouter]
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      path: /metrics
+      metricRelabelings:
+        - sourceLabels: [user_id]
+          action: labeldrop
+        - sourceLabels: [request_id]
+          action: labeldrop

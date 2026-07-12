@@ -1,0 +1,53 @@
+# Dev hostnames behind the platform's wildcard cert.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openrouter-api
+spec:
+  tls:
+    - hosts:
+        - api.dev.openrouter.example
+      secretName: openrouter-api-tls
+  rules:
+    - host: api.dev.openrouter.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-go
+                port:
+                  name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openrouter-app
+spec:
+  tls:
+    - hosts:
+        - app.dev.openrouter.example
+        - docs.dev.openrouter.example
+      secretName: openrouter-web-tls
+  rules:
+    - host: app.dev.openrouter.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-web
+                port:
+                  name: http
+    - host: docs.dev.openrouter.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-web
+                port:
+                  name: http

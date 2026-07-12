@@ -1,0 +1,59 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "graphTooltip": 1,
+  "id": null,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Backend HTTP P95 by route",
+      "targets": [
+        { "expr": "backend:http_request_duration_seconds:p95", "legendFormat": "{{ route }}", "refId": "A" }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Backend 5xx ratio by route",
+      "targets": [
+        { "expr": "backend:error_rate:5m", "legendFormat": "{{ route }}", "refId": "A" }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 6 },
+      "id": 3,
+      "title": "Celery queue depth",
+      "targets": [
+        { "expr": "celery_queue_length", "legendFormat": "{{ queue }}", "refId": "A" }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 6 },
+      "id": 4,
+      "title": "AuthService gRPC RPS / errors",
+      "targets": [
+        { "expr": "sum(rate(grpc_server_handled_total{service=\"backend-grpc\"}[1m]))", "legendFormat": "rps", "refId": "A" },
+        { "expr": "sum(rate(grpc_server_handled_total{service=\"backend-grpc\",grpc_code!=\"OK\"}[1m]))", "legendFormat": "errors/s", "refId": "B" }
+      ],
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["openrouter", "backend"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "OpenRouter — Backend",
+  "uid": "openrouter-backend",
+  "version": 1
+}

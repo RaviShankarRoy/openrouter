@@ -1,0 +1,16 @@
+# Disruption budget — node drains may take at most 50% of pods at a time.
+# WHY minAvailable instead of maxUnavailable: when the HPA scales down to
+# minReplicas (5), maxUnavailable would let drains take 2 pods leaving only 3.
+# minAvailable: 50% always preserves enough capacity to absorb the in-flight
+# load of the drained pods.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway-go
+  labels:
+    app.kubernetes.io/name: gateway-go
+spec:
+  minAvailable: 50%
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway-go

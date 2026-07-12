@@ -1,0 +1,43 @@
+# Backend Service exposes three ports: HTTP (REST), gRPC (internal), metrics.
+# WHY one Service for HTTP + gRPC: same workload, same selectors. We split
+# metrics out as a separate Service for the same reasons as the gateway.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-python
+  labels:
+    app.kubernetes.io/name: backend-python
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: backend-python
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: 50051
+      targetPort: grpc
+      # gRPC needs HTTP/2 — appProtocol hints to ingress controllers and meshes.
+      appProtocol: grpc
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-python-metrics
+  labels:
+    app.kubernetes.io/name: backend-python
+    monitoring: prometheus
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: backend-python
+  ports:
+    - name: metrics
+      port: 9092
+      targetPort: metrics
+      protocol: TCP

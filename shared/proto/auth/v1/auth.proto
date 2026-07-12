@@ -1,0 +1,56 @@
+// Auth service: Go gateway calls this when its in-process LRU and Redis both miss.
+// Source-of-truth for API key metadata is PostgreSQL (Python-owned).
+syntax = "proto3";
+
+package openrouter.auth.v1;
+
+option go_package = "github.com/openrouter/gateway-go/internal/proto/auth/v1;authv1";
+
+import "google/protobuf/timestamp.proto";
+
+service AuthService {
+  rpc ValidateKey(ValidateKeyRequest) returns (ValidateKeyResponse);
+  rpc RevokeKey(RevokeKeyRequest) returns (RevokeKeyResponse);
+}
+
+message ValidateKeyRequest {
+  // SHA-256 of the bearer token sent by the client. Plaintext key never crosses the wire.
+  string key_hash = 1;
+}
+
+message ValidateKeyResponse {
+  bool valid = 1;
+  string key_id = 2;
+  string org_id = 3;
+  string user_id = 4;
+  repeated string allowed_models = 5;     // empty == all allowed
+  repeated string denied_models = 6;
+  RateLimitPolicy rate_limit = 7;
+  BudgetPolicy budget = 8;
+  google.protobuf.Timestamp expires_at = 9;
+  string revocation_reason = 10;          // populated only when valid=false
+}
+
+message RateLimitPolicy {
+  uint32 requests_per_minute = 1;
+  uint32 tokens_per_minute = 2;
+  uint32 concurrent_requests = 3;
+  uint32 requests_per_day = 4;
+  uint32 burst_multiplier = 5;            // DRD RL-005
+}
+
+message BudgetPolicy {
+  double remaining_credits = 1;           // dollars
+  double daily_cap = 2;
+  double monthly_cap = 3;
+  bool hard_stop = 4;                     // reject vs warn
+}
+
+message RevokeKeyRequest {
+  string key_id = 1;
+  string reason = 2;
+}
+
+message RevokeKeyResponse {
+  bool ok = 1;
+}

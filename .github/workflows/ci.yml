@@ -1,0 +1,239 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# One concurrent run per branch — newer pushes cancel in-progress runs.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------- Discover which stacks changed ----------
+  changes:
+    name: detect-changes
+    runs-on: ubuntu-latest
+    outputs:
+      gateway: ${{ steps.filter.outputs.gateway }}
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      cli: ${{ steps.filter.outputs.cli }}
+      proto: ${{ steps.filter.outputs.proto }}
+      openapi: ${{ steps.filter.outputs.openapi }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            gateway:
+              - 'gateway-go/**'
+              - 'shared/proto/**'
+            backend:
+              - 'backend-python/**'
+              - 'shared/proto/**'
+              - 'shared/openapi/**'
+            frontend:
+              - 'frontend-web/**'
+              - 'shared/openapi/**'
+            cli:
+              - 'cli/**'
+              - 'shared/openapi/**'
+            proto:
+              - 'shared/proto/**'
+              - 'Makefile'
+            openapi:
+              - 'shared/openapi/**'
+
+  # ---------- Go gateway ----------
+  gateway-go:
+    name: gateway-go
+    needs: changes
+    if: needs.changes.outputs.gateway == 'true'
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: gateway-go } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+          cache-dependency-path: gateway-go/go.sum
+      - name: Install proto plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Generate proto stubs
+        working-directory: .
+        run: |
+          pip install grpcio-tools
+          export PATH="$HOME/go/bin:$PATH"
+          python -m grpc_tools.protoc \
+            -I shared/proto \
+            --go_out=. --go_opt=module=github.com/openrouter \
+            --go-grpc_out=. --go-grpc_opt=module=github.com/openrouter \
+            shared/proto/auth/v1/auth.proto \
+            shared/proto/routing/v1/routing.proto \
+            shared/proto/usage/v1/usage.proto
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.62
+          working-directory: gateway-go
+      - run: go vet ./...
+      - run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gateway-go-coverage
+          path: gateway-go/coverage.out
+
+  # ---------- Python backend ----------
+  backend-python:
+    name: backend-python
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend-python } }
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: openrouter
+          POSTGRES_PASSWORD: dev_only_password
+          POSTGRES_DB: openrouter
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U openrouter"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: valkey/valkey:7.2-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      POSTGRES_DSN: postgresql+asyncpg://openrouter:dev_only_password@localhost:5432/openrouter
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - name: Generate proto stubs
+        working-directory: .
+        run: make proto-py PY_VENV=backend-python/.venv/bin/python
+      - run: .venv/bin/ruff check .
+      - run: .venv/bin/ruff format --check .
+      - run: .venv/bin/mypy app
+      - run: .venv/bin/python -m alembic upgrade head
+      - run: .venv/bin/pytest --cov=app --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-python-coverage
+          path: backend-python/coverage.xml
+
+  # ---------- Next.js frontend ----------
+  frontend-web:
+    name: frontend-web
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend-web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: frontend-web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Regenerate OpenAPI types
+        run: pnpm run codegen:openapi
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm run test
+      - run: pnpm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  # ---------- CLI ----------
+  cli:
+    name: cli
+    needs: changes
+    if: needs.changes.outputs.cli == 'true'
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: cli } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: cli/package.json
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  # ---------- Codegen drift ----------
+  # Fail the build if generated code (proto / openapi) doesn't match a clean
+  # regeneration. Prevents schema/code drift.
+  codegen-drift:
+    name: codegen-drift
+    needs: changes
+    if: needs.changes.outputs.proto == 'true' || needs.changes.outputs.openapi == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.24" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - name: Install codegen tools
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          pip install grpcio-tools
+      - name: Regenerate
+        run: |
+          export PATH="$HOME/go/bin:$PATH"
+          # Proto codegen — same logic as `make proto`, but uses the system
+          # python and grpc_tools installed above.
+          mkdir -p backend-python/app/infrastructure/grpc/gen
+          python -m grpc_tools.protoc \
+            -I shared/proto \
+            --go_out=. --go_opt=module=github.com/openrouter \
+            --go-grpc_out=. --go-grpc_opt=module=github.com/openrouter \
+            --python_out=backend-python/app/infrastructure/grpc/gen \
+            --grpc_python_out=backend-python/app/infrastructure/grpc/gen \
+            shared/proto/auth/v1/auth.proto \
+            shared/proto/routing/v1/routing.proto \
+            shared/proto/usage/v1/usage.proto
+          # Frontend OpenAPI codegen
+          cd frontend-web && pnpm install --frozen-lockfile && pnpm run codegen:openapi
+      - name: Check no drift
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Generated code is out of date. Run 'make codegen' locally and commit."
+            git status
+            git diff --stat
+            exit 1
+          fi

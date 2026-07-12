@@ -1,0 +1,30 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosimple
+    - gofmt
+    - goimports
+    - revive
+    - gosec
+    - bodyclose
+    - contextcheck
+    - errorlint
+    - nilerr
+    - prealloc
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/openrouter/gateway-go
+  revive:
+    rules:
+      - name: exported
+      - name: error-return
+      - name: error-naming

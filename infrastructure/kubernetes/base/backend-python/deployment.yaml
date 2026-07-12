@@ -1,0 +1,182 @@
+# Backend (FastAPI + gunicorn + uvicorn workers).
+#
+# WHY 3 default replicas: matches Go gateway floor; Python is the source of
+# truth for billing/auth so dropping below 2 is unsafe even at low traffic.
+#
+# WHY a separate gRPC port (50051): the Go gateway speaks gRPC for AuthService /
+# RoutingService (ARCHITECTURE.md §2.7). HTTP port 8000 is for the dashboard
+# BFF and admin/webhook traffic.
+#
+# WHY ML model cache via emptyDir: guardrail models are downloaded at startup.
+# An emptyDir survives container restarts within a pod (good) but not pod
+# restarts (acceptable — ~30s warm-up).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-python
+  labels:
+    app.kubernetes.io/name: backend-python
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-python
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-python
+        app.kubernetes.io/component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9092"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: backend-python
+      automountServiceAccountToken: false
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: backend-python
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # Python is slower to drain than Go — give it 60s for in-flight async tasks.
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: backend
+          image: ghcr.io/openrouter/backend-python:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+            - name: metrics
+              containerPort: 9092
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: openrouter-env
+                  key: ENVIRONMENT
+                  optional: true
+            - name: BACKEND_HTTP_PORT
+              value: "8000"
+            - name: BACKEND_GRPC_PORT
+              value: "50051"
+            - name: BACKEND_METRICS_PORT
+              value: "9092"
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-postgres
+                  key: dsn
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-redis
+                  key: url
+            - name: NATS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-nats
+                  key: url
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-app
+                  key: secret_key
+            - name: STRIPE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-stripe
+                  key: api_key
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-stripe
+                  key: webhook_secret
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observability.svc.cluster.local:4317
+            - name: OTEL_SERVICE_NAME
+              value: backend-python
+          # Slightly larger than Go since SQLAlchemy + ML imports inflate RSS.
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+              ephemeral-storage: "200Mi"
+            limits:
+              cpu: "2000m"
+              memory: "1Gi"
+              ephemeral-storage: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Python takes longer to start (lazy imports) — tolerate up to 60s.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 60
+            periodSeconds: 1
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: model-cache
+              mountPath: /var/cache/models
+            - name: app-cache
+              mountPath: /app/.cache
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: model-cache
+          emptyDir:
+            # Generous: guardrail and embedding model weights can hit several hundred MB.
+            sizeLimit: 2Gi
+        - name: app-cache
+          emptyDir:
+            sizeLimit: 128Mi

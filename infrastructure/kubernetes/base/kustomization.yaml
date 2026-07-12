@@ -1,0 +1,51 @@
+# Base kustomization. Overlays add environment-specific patches; never apply
+# this base directly — it has no replica counts, image tags, or domain values
+# resolved. The overlays own those decisions.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: openrouter
+
+# Common labels are propagated into every selector and pod template so that
+# cluster-wide queries ("all openrouter workloads") always hit.
+commonLabels:
+  app.kubernetes.io/part-of: openrouter
+  app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - namespace.yaml
+  - secrets.yaml
+  - ingress.yaml
+  - servicemonitor.yaml
+  - prometheusrule.yaml
+
+  # Workloads
+  - gateway-go/serviceaccount.yaml
+  - gateway-go/configmap.yaml
+  - gateway-go/deployment.yaml
+  - gateway-go/service.yaml
+  - gateway-go/hpa.yaml
+  - gateway-go/pdb.yaml
+  - gateway-go/networkpolicy.yaml
+
+  - backend-python/serviceaccount.yaml
+  - backend-python/deployment.yaml
+  - backend-python/service.yaml
+  - backend-python/hpa.yaml
+  - backend-python/pdb.yaml
+  - backend-python/networkpolicy.yaml
+
+  - backend-celery-worker/deployment.yaml
+  - backend-celery-beat/deployment.yaml
+
+  - frontend-web/deployment.yaml
+  - frontend-web/service.yaml
+  - frontend-web/hpa.yaml
+
+  # Stateful infra. In production these are typically managed services
+  # (RDS, ElastiCache, MSK) and the manifests below are skipped via the
+  # 'prod' overlay. NATS is in-cluster everywhere because there is no
+  # AWS managed NATS at time of writing.
+  - postgres/patroni.yaml
+  - redis/redis.yaml
+  - nats/jetstream.yaml

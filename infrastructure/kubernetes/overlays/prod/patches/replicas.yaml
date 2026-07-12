@@ -1,0 +1,52 @@
+# Production scale.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-go
+spec:
+  replicas: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-python
+spec:
+  replicas: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-celery-worker
+spec:
+  replicas: 4
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-web
+spec:
+  replicas: 4
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gateway-go
+spec:
+  minReplicas: 10
+  maxReplicas: 200
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-python
+spec:
+  minReplicas: 5
+  maxReplicas: 50
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-web
+spec:
+  minReplicas: 4
+  maxReplicas: 20

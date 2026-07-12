@@ -1,0 +1,113 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0.01 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area" },
+      "title": "Gateway 5xx error rate (5m)",
+      "targets": [
+        {
+          "expr": "sum(rate(gateway_proxy_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(gateway_proxy_requests_total[5m])), 1)",
+          "refId": "A"
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "title": "Gateway request P50/P95/P99",
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(gateway_proxy_request_duration_seconds_bucket[5m])))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(gateway_proxy_request_duration_seconds_bucket[5m])))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "gateway:proxy_request_duration_seconds:p99", "legendFormat": "p99", "refId": "C" }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "title": "RPS by provider",
+      "targets": [
+        { "expr": "sum by (provider) (rate(gateway_proxy_requests_total[1m]))", "legendFormat": "{{ provider }}", "refId": "A" }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 6 },
+      "id": 4,
+      "title": "Cache hit ratio",
+      "targets": [
+        { "expr": "gateway:cache_hit_ratio:5m", "legendFormat": "hit ratio", "refId": "A" }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 6 },
+      "id": 5,
+      "title": "Provider error rate",
+      "targets": [
+        { "expr": "gateway:provider_error_rate:5m", "legendFormat": "{{ provider }}", "refId": "A" }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 12 },
+      "id": 6,
+      "title": "Circuit breaker state (1=open)",
+      "targets": [
+        { "expr": "gateway_circuitbreaker_state == 1", "legendFormat": "{{ provider }}/{{ model }}", "refId": "A" }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 12 },
+      "id": 7,
+      "title": "Rate limit rejections",
+      "targets": [
+        { "expr": "sum(rate(gateway_ratelimit_rejections_total[1m]))", "legendFormat": "rejected/s", "refId": "A" }
+      ],
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["openrouter", "gateway"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "OpenRouter — Gateway",
+  "uid": "openrouter-gateway",
+  "version": 1
+}

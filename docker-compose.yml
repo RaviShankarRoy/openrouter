@@ -1,0 +1,107 @@
+# Local development infrastructure.
+# Production uses managed services (RDS, ElastiCache, MSK) provisioned via Terraform.
+
+name: openrouter-dev
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: or-postgres
+    environment:
+      POSTGRES_USER: openrouter
+      POSTGRES_PASSWORD: dev_only_password
+      POSTGRES_DB: openrouter
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openrouter -d openrouter"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: valkey/valkey:7.2-alpine
+    container_name: or-redis
+    command: ["valkey-server", "--save", "60", "1", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: or-nats
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: or-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: openrouter
+      MINIO_ROOT_PASSWORD: dev_only_password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: or-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+
+  # Self-host inference for open-weight models (Gemma 4 E*, small Qwen, Phi, Llama).
+  # GPU block commented out by default — uncomment when nvidia-container-toolkit
+  # is installed. Without GPU, only smaller models (E2B/E4B) run at usable speed.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: or-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollamadata:/root/.ollama
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  ollamadata:

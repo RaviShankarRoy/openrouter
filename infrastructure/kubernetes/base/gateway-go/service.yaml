@@ -1,0 +1,43 @@
+# Two Services intentionally:
+#   1. gateway-go      — application traffic (Ingress -> here).
+#   2. gateway-go-metrics — Prometheus scrape target only.
+# WHY split: scraping policies, ServiceMonitor selectors, and NetworkPolicy
+# rules differ between metrics and request traffic. Mixing them on one Service
+# leaks metrics behind the ingress and complicates label-based scrape selectors.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-go
+  labels:
+    app.kubernetes.io/name: gateway-go
+    app.kubernetes.io/component: gateway
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: gateway-go
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-go-metrics
+  labels:
+    app.kubernetes.io/name: gateway-go
+    app.kubernetes.io/component: gateway
+    # ServiceMonitor selectors target this label exclusively.
+    monitoring: prometheus
+spec:
+  type: ClusterIP
+  # Headless: we want each pod IP individually for per-replica metric series.
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: gateway-go
+  ports:
+    - name: metrics
+      port: 9091
+      targetPort: metrics
+      protocol: TCP

@@ -1,0 +1,54 @@
+// Routing decisions for "openrouter/auto" and semantic routing (DRD RT-002, RT-009).
+// Go gateway delegates to Python when explicit model isn't specified.
+syntax = "proto3";
+
+package openrouter.routing.v1;
+
+option go_package = "github.com/openrouter/gateway-go/internal/proto/routing/v1;routingv1";
+
+service RoutingService {
+  rpc ResolveModel(ResolveModelRequest) returns (ResolveModelResponse);
+  rpc ProviderScores(ProviderScoresRequest) returns (ProviderScoresResponse);
+}
+
+message ResolveModelRequest {
+  string requested_model = 1;             // e.g. "openrouter/auto"
+  string org_id = 2;
+  RequestHints hints = 3;
+}
+
+message RequestHints {
+  uint32 estimated_input_tokens = 1;
+  bool needs_tools = 2;
+  bool needs_vision = 3;
+  bool needs_streaming = 4;
+  string user_geo = 5;                    // ISO country code
+  repeated string data_residency_jurisdictions = 6;
+}
+
+message ResolveModelResponse {
+  string primary_model = 1;
+  string primary_provider = 2;
+  repeated FallbackTarget fallback_chain = 3;
+  string strategy_used = 4;               // cost | latency | quality | semantic
+}
+
+message FallbackTarget {
+  string model = 1;
+  string provider = 2;
+}
+
+message ProviderScoresRequest {
+  repeated string models = 1;
+}
+
+message ProviderScoresResponse {
+  repeated ProviderScore scores = 1;
+}
+
+message ProviderScore {
+  string model = 1;
+  string provider = 2;
+  double score = 3;                       // 0..1
+  uint64 last_updated_unix = 4;
+}

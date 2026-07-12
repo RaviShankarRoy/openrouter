@@ -1,0 +1,126 @@
+# Semantic routing candidate pool for `openrouter/auto` (DRD §9.1, RT-002).
+#
+# When a client sends `model: "openrouter/auto"`, the gateway delegates to
+# the Python RoutingService.ResolveModel RPC. The servicer:
+#   1. Loads this file (cached in-process; reload via SIGHUP — Phase 2 wiring)
+#   2. Filters `pool` entries by RequestHints (needs_tools, needs_vision,
+#      needs_streaming, user_geo, data_residency_jurisdictions)
+#   3. Hands surviving Candidates to the StrategyRegistry strategy named in
+#      `default_strategy` (or per-key override)
+#   4. Returns ResolveModelResponse(primary, fallback, strategy_used)
+#
+# Quality scores: 0..1. Sourced from Auto Exacto evals (DRD §9.2). Update
+# alongside model_pricing rows. Latency p50 in milliseconds.
+
+default_strategy: cost           # cost | latency | quality
+fallback_max: 2                  # number of fallback candidates returned
+
+pool:
+  # ---------- OpenAI ----------
+  - model: gpt-4o
+    provider: openai
+    pricing_per_million: 2.50
+    quality_score: 0.92
+    latency_p50_ms: 850
+    capabilities: [text, vision, tools, streaming]
+    geos_allowed: ["*"]
+    residency: [us, eu, global]
+
+  - model: gpt-4o-mini
+    provider: openai
+    pricing_per_million: 0.15
+    quality_score: 0.78
+    latency_p50_ms: 420
+    capabilities: [text, vision, tools, streaming]
+    geos_allowed: ["*"]
+    residency: [us, eu, global]
+
+  # ---------- Anthropic ----------
+  - model: anthropic/claude-sonnet-4-20250514
+    provider: anthropic
+    pricing_per_million: 3.00
+    quality_score: 0.94
+    latency_p50_ms: 950
+    capabilities: [text, vision, tools, streaming]
+    geos_allowed: ["*"]
+    residency: [us, global]
+
+  # ---------- Gemma 4 (Apache 2.0, multimodal) ----------
+  - model: google/gemma-4-31b
+    provider: fireworks
+    pricing_per_million: 0.30
+    quality_score: 0.86
+    latency_p50_ms: 720
+    capabilities: [text, vision, audio, video, tools, streaming]
+    geos_allowed: ["*"]
+    residency: [us, eu, global]
+
+  - model: google/gemma-4-26b-moe
+    provider: fireworks
+    pricing_per_million: 0.20
+    quality_score: 0.82
+    latency_p50_ms: 480
+    capabilities: [text, vision, audio, video, tools, streaming]
+    geos_allowed: ["*"]
+    residency: [us, eu, global]
+
+  - model: google/gemma-4-e4b
+    provider: ollama
+    pricing_per_million: 0.05
+    quality_score: 0.68
+    latency_p50_ms: 180
+    capabilities: [text, vision, streaming]
+    geos_allowed: ["*"]
+    residency: [self_hosted, us, eu, global]
+
+  - model: google/gemma-4-e2b
+    provider: ollama
+    pricing_per_million: 0.02
+    quality_score: 0.55
+    latency_p50_ms: 90
+    capabilities: [text, streaming]
+    geos_allowed: ["*"]
+    residency: [self_hosted, us, eu, global]
+
+  # ---------- Qwen 3.x (Apache 2.0) ----------
+  - model: qwen/qwen3.6-27b
+    provider: together
+    pricing_per_million: 0.20
+    quality_score: 0.88
+    latency_p50_ms: 600
+    capabilities: [text, tools, streaming]
+    geos_allowed: ["*"]
+    residency: [us, global]
+
+  - model: qwen/qwen3.6-35b-a3b
+    provider: together
+    pricing_per_million: 0.27
+    quality_score: 0.87
+    latency_p50_ms: 380
+    capabilities: [text, tools, streaming]
+    geos_allowed: ["*"]
+    residency: [us, global]
+
+  - model: qwen/qwen3.5-35b-a3b
+    provider: together
+    pricing_per_million: 0.27
+    quality_score: 0.83
+    latency_p50_ms: 380
+    capabilities: [text, tools, streaming]
+    geos_allowed: ["*"]
+    residency: [us, global]
+
+  - model: qwen/qwen3.5-122b-a10b
+    provider: fireworks
+    pricing_per_million: 0.60
+    quality_score: 0.91
+    latency_p50_ms: 700
+    capabilities: [text, tools, streaming]
+    geos_allowed: ["*"]
+    residency: [us, global]
+
+# Per-strategy hard floors. If no candidate clears the floor, the request
+# falls back to OpenAI gpt-4o-mini (sentinel, never filtered out).
+strategy_floors:
+  quality: 0.70                  # cost-strategy may pick cheaper; quality must clear this
+  latency_max_ms: 5000

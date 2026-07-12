@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose *)",
+      "Bash(timeout 90 .venv/bin/python -m pytest tests/unit -q --no-header)",
+      "Bash(python3 -m py_compile app/main.py app/application/routing/config.py tests/integration/test_gemma_qwen_adapters.py)",
+      "Bash(python3 -m py_compile src/config.py src/control/admin.py src/scenarios/fallback.py)",
+      "Bash(node -e ' *)",
+      "Bash(node --check /tmp/gemma_qwen_check.mjs)",
+      "Bash(python3 -c ' *)",
+      "mcp__plugin_lumen_lumen__semantic_search"
+    ]
+  }
+}

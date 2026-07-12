@@ -1,0 +1,10 @@
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/gateway ./cmd/gateway"
+bin = "./tmp/gateway"
+include_ext = ["go", "yaml", "yml"]
+exclude_dir = ["bin", "tmp", "testdata"]
+delay = 500

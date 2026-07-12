@@ -1,0 +1,135 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "k6 load test results for the OpenRouter gateway. Each panel maps to an NFR ID — see thresholds.js.",
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "iteration": 1,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "InfluxDB-k6",
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Throughput (RPS) — NFR-005",
+      "type": "timeseries",
+      "targets": [
+        {
+          "alias": "rps",
+          "measurement": "http_reqs",
+          "query": "SELECT non_negative_derivative(mean(\"value\"), 1s) FROM \"http_reqs\" WHERE $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "datasource": "InfluxDB-k6",
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Request duration P50/P95/P99",
+      "type": "timeseries",
+      "targets": [
+        {
+          "alias": "p50",
+          "rawQuery": true,
+          "query": "SELECT percentile(\"value\", 50) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval) fill(null)"
+        },
+        {
+          "alias": "p95",
+          "rawQuery": true,
+          "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval) fill(null)"
+        },
+        {
+          "alias": "p99",
+          "rawQuery": true,
+          "query": "SELECT percentile(\"value\", 99) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval) fill(null)"
+        }
+      ]
+    },
+    {
+      "datasource": "InfluxDB-k6",
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "title": "Gateway-only latency P99 — NFR-002",
+      "type": "timeseries",
+      "targets": [
+        {
+          "alias": "gateway p99",
+          "rawQuery": true,
+          "query": "SELECT percentile(\"value\", 99) FROM \"http_req_duration\" WHERE \"kind\" = 'gateway' AND $timeFilter GROUP BY time($__interval) fill(null)"
+        }
+      ]
+    },
+    {
+      "datasource": "InfluxDB-k6",
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
+      "title": "Error rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "alias": "errors",
+          "rawQuery": true,
+          "query": "SELECT mean(\"value\") FROM \"http_req_failed\" WHERE $timeFilter GROUP BY time($__interval) fill(0)"
+        }
+      ]
+    },
+    {
+      "datasource": "InfluxDB-k6",
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 5,
+      "title": "Streaming TTFT P95 — NFR-003",
+      "type": "timeseries",
+      "targets": [
+        {
+          "alias": "ttft p95",
+          "rawQuery": true,
+          "query": "SELECT percentile(\"value\", 95) FROM \"streaming_ttft_ms\" WHERE $timeFilter GROUP BY time($__interval) fill(null)"
+        }
+      ]
+    },
+    {
+      "datasource": "InfluxDB-k6",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 6,
+      "title": "Active VUs",
+      "type": "timeseries",
+      "targets": [
+        {
+          "alias": "vus",
+          "rawQuery": true,
+          "query": "SELECT mean(\"value\") FROM \"vus\" WHERE $timeFilter GROUP BY time($__interval) fill(null)"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": ["k6", "load-test", "gateway"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Gateway Load Tests (k6)",
+  "uid": "gateway-k6-load",
+  "version": 1
+}

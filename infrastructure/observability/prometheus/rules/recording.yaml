@@ -1,0 +1,54 @@
+# Recording rules — pre-compute hot quantiles so dashboards and alerts query
+# cheap aggregates rather than raw histograms. ARCHITECTURE.md §2.3 mandates
+# bounded-cardinality labels: never aggregate by user_id or request_id.
+
+groups:
+  - name: gateway-go.recording
+    interval: 30s
+    rules:
+      - record: gateway:proxy_request_duration_seconds:p99
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, model, provider) (
+              rate(gateway_proxy_request_duration_seconds_bucket[5m])
+            )
+          )
+
+      - record: gateway:proxy_request_duration_seconds:p95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, model, provider) (
+              rate(gateway_proxy_request_duration_seconds_bucket[5m])
+            )
+          )
+
+      - record: gateway:provider_error_rate:5m
+        expr: |
+          sum by (provider) (rate(gateway_proxy_provider_errors_total[5m]))
+            / clamp_min(sum by (provider) (rate(gateway_proxy_requests_total[5m])), 1)
+
+      - record: gateway:cache_hit_ratio:5m
+        expr: |
+          sum(rate(gateway_cache_hits_total[5m]))
+            / clamp_min(sum(rate(gateway_cache_lookups_total[5m])), 1)
+
+      - record: gateway:rate_limit_reject_ratio:5m
+        expr: |
+          sum(rate(gateway_ratelimit_rejections_total[5m]))
+            / clamp_min(sum(rate(gateway_proxy_requests_total[5m])), 1)
+
+  - name: backend-python.recording
+    interval: 30s
+    rules:
+      - record: backend:http_request_duration_seconds:p95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, route) (
+              rate(http_request_duration_seconds_bucket{service="backend-python"}[5m])
+            )
+          )
+
+      - record: backend:error_rate:5m
+        expr: |
+          sum by (route) (rate(http_requests_total{service="backend-python",status=~"5.."}[5m]))
+            / clamp_min(sum by (route) (rate(http_requests_total{service="backend-python"}[5m])), 1)

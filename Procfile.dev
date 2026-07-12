@@ -1,0 +1,29 @@
+# Procfile.dev — native dev orchestration.
+#
+# Reads as one process per line: `name: command`. Pick any of:
+#
+#   overmind start -f Procfile.dev      # recommended (tmux-backed, attach to one process)
+#   honcho       -f Procfile.dev start  # Python, pip install honcho
+#   foreman      start -f Procfile.dev  # Ruby gem
+#   make up-native                       # delegates to overmind/honcho if installed
+#
+# Prerequisites:
+#   - Local infra running: `docker compose up -d` (postgres, redis, nats, minio, jaeger)
+#   - Each service's deps installed: `make install` in gateway-go, backend-python, frontend-web
+#   - $PATH includes air (Go hot reload): go install github.com/air-verse/air@latest
+#
+# Ports (must match docker-compose.dev.yml so we stay in sync):
+#   8080 gateway  •  9091 gateway-metrics
+#   8000 backend  •  9092 backend-metrics  •  50051 backend-grpc
+#   3000 frontend
+#   9100 mock-providers
+#
+# Ctrl+C stops every process cleanly.
+
+gateway:   cd gateway-go     && air -c .air.toml
+backend:   cd backend-python && make dev
+grpc:      cd backend-python && make grpc-serve
+worker:    cd backend-python && make worker
+beat:      cd backend-python && make beat
+frontend:  cd frontend-web   && make dev
+mocks:     cd tools/mock-providers && make dev

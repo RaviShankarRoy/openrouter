@@ -1,0 +1,185 @@
+# Gateway-Go Deployment — hot path, latency-sensitive (DRD NFR-002 < 15µs P99).
+#
+# WHY 3 default replicas: smallest set that survives one node drain plus one
+# rolling-update surge without dropping below quorum. Overlays raise this for prod.
+#
+# WHY readOnlyRootFilesystem: gateway never writes to disk. emptyDir volumes
+# cover /tmp (used by Go runtime profiles) and the spool dir.
+#
+# WHY topology spread constraints: avoid all-pods-on-one-AZ failure mode
+# (NFR-001 99.95% availability requires multi-AZ).
+#
+# WHY 30s graceful termination: SSE streams may be in flight; we want
+# preStop to drain in-flight requests before SIGTERM.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-go
+  labels:
+    app.kubernetes.io/name: gateway-go
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Allow surge but never drop below 1 pod available — the gateway is critical path.
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway-go
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gateway-go
+        app.kubernetes.io/component: gateway
+      annotations:
+        # Force pod restart on configmap change so SIGHUP-less updates still propagate.
+        # In practice the gateway reloads on SIGHUP, but a restart is safer for image bumps.
+        checksum/config: "REPLACE_VIA_KUSTOMIZE"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: gateway-go
+      automountServiceAccountToken: false
+      # Scheduler hints — distribute across AZs and prefer not to co-locate replicas.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway-go
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway-go
+      # PSS "restricted" requires these at the pod level too.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      # Long enough to drain SSE clients but bounded so a stuck pod still rolls.
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: gateway
+          # Image is patched per overlay; placeholder for digest pinning in prod.
+          image: ghcr.io/openrouter/gateway-go:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9091
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: openrouter-env
+                  key: ENVIRONMENT
+                  optional: true
+            - name: GATEWAY_HTTP_PORT
+              value: "8080"
+            - name: GATEWAY_METRICS_PORT
+              value: "9091"
+            - name: GATEWAY_PROVIDER_CONFIG
+              value: /etc/gateway/providers.yaml
+            - name: GATEWAY_BACKEND_GRPC
+              value: backend-python:50051
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-redis
+                  key: url
+            - name: NATS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-nats
+                  key: url
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observability.svc.cluster.local:4317
+            - name: OTEL_SERVICE_NAME
+              value: gateway-go
+          envFrom:
+            - configMapRef:
+                name: openrouter-env
+                optional: true
+          # Tight resource bounds. Overlays widen prod and shrink dev.
+          # Requests sized for ~2,500 RPS per pod against k6 baseline.
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "256Mi"
+              ephemeral-storage: "100Mi"
+            limits:
+              # No CPU limit by default: throttling latency spikes the P99 budget.
+              # If noisy-neighbor becomes a problem, set a generous limit (~4x request).
+              memory: "512Mi"
+              ephemeral-storage: "500Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 1
+            # Three failures before marking NotReady — protects against transient
+            # Redis blips that the gateway can serve through with degraded auth cache.
+            failureThreshold: 3
+          # Startup probe protects slow pods (rare in Go, but cold caches need warmup).
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 1
+          lifecycle:
+            preStop:
+              exec:
+                # Sleep a few seconds before SIGTERM so endpoints controller has
+                # time to remove the pod from Service backends; avoids 502s during rollout.
+                command: ["/bin/sh", "-c", "sleep 5"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: providers
+              mountPath: /etc/gateway
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /var/cache/gateway
+      volumes:
+        - name: providers
+          configMap:
+            name: gateway-go-providers
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: cache
+          emptyDir:
+            sizeLimit: 256Mi

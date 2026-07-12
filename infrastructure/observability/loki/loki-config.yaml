@@ -1,0 +1,47 @@
+# Single-binary Loki for dev/staging. Production uses the distributed
+# loki-stack chart with object-storage-backed chunks and index.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9095
+  log_level: info
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  retention_period: 168h          # 7 days in dev; prod overrides to 30d hot + S3 archive
+  ingestion_rate_mb: 16
+  ingestion_burst_size_mb: 32
+  max_label_name_length: 1024
+  max_label_value_length: 4096
+  max_label_names_per_series: 30  # bounded cardinality per ARCHITECTURE.md §2.3
+
+ruler:
+  alertmanager_url: http://alertmanager:9093
+
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  delete_request_store: filesystem

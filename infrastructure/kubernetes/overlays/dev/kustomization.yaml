@@ -1,0 +1,39 @@
+# Dev overlay — single-AZ minikube/kind, low replicas, in-cluster everything.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: openrouter-dev
+
+namePrefix: dev-
+
+commonLabels:
+  app.kubernetes.io/instance: openrouter-dev
+  environment: dev
+
+resources:
+  - ../../base
+
+# WHY image overrides without digests in dev: rapid iteration. Prod pins digests.
+images:
+  - name: ghcr.io/openrouter/gateway-go
+    newTag: dev
+  - name: ghcr.io/openrouter/backend-python
+    newTag: dev
+  - name: ghcr.io/openrouter/frontend-web
+    newTag: dev
+
+patches:
+  - path: patches/replicas.yaml
+  - path: patches/resources.yaml
+  - path: patches/ingress-host.yaml
+
+# WHY a dev-only configmap with public env: real secrets would still come from
+# Vault but the LDAP/OAuth config differs.
+configMapGenerator:
+  - name: openrouter-env
+    behavior: create
+    literals:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=debug
+      - NEXT_PUBLIC_API_BASE_URL=https://api.dev.openrouter.example
+      - NEXTAUTH_URL=https://app.dev.openrouter.example

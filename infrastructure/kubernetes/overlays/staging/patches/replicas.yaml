@@ -1,0 +1,52 @@
+# Staging = roughly half the production replica counts.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-go
+spec:
+  replicas: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-python
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-celery-worker
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-web
+spec:
+  replicas: 2
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gateway-go
+spec:
+  minReplicas: 3
+  maxReplicas: 50
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-python
+spec:
+  minReplicas: 2
+  maxReplicas: 20
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-web
+spec:
+  minReplicas: 2
+  maxReplicas: 10

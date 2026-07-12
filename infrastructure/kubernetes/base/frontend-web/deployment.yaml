@@ -1,0 +1,124 @@
+# Frontend (Next.js 15 App Router) — dashboard + portal + docs.
+# Server-rendered, so it needs CPU but very little memory at idle.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-web
+  labels:
+    app.kubernetes.io/name: frontend-web
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: frontend-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: frontend-web
+        app.kubernetes.io/component: frontend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9464"  # Next.js custom metrics endpoint, if exposed.
+        prometheus.io/path: "/metrics"
+    spec:
+      automountServiceAccountToken: false
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: frontend-web
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: web
+          image: ghcr.io/openrouter/frontend-web:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            - name: NEXT_PUBLIC_API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openrouter-env
+                  key: NEXT_PUBLIC_API_BASE_URL
+                  optional: true
+            - name: NEXT_PUBLIC_BACKEND_URL
+              # Internal cluster DNS — BFF uses this for SSR fetches.
+              value: http://backend-python:8000
+            - name: NEXTAUTH_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openrouter-env
+                  key: NEXTAUTH_URL
+                  optional: true
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: openrouter-frontend
+                  key: nextauth_secret
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+              ephemeral-storage: "100Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+              ephemeral-storage: "500Mi"
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /app/.next/cache
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 128Mi
+        - name: cache
+          emptyDir:
+            sizeLimit: 512Mi

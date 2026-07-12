@@ -1,0 +1,79 @@
+# Alerting rules. Severity guidelines:
+#   page    — wakes oncall (24/7)
+#   ticket  — files a ticket during business hours
+#   info    — captured for trend review only
+# DRD NFR-001 (99.95% uptime) requires immediate paging on user-visible breakage.
+
+groups:
+  - name: gateway-go.alerts
+    rules:
+      - alert: GatewayHighErrorRate
+        expr: |
+          sum(rate(gateway_proxy_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(gateway_proxy_requests_total[5m])), 1) > 0.01
+        for: 5m
+        labels: { severity: page, team: gateway }
+        annotations:
+          summary: "Gateway 5xx rate above 1% for 5 minutes"
+          runbook: "docs/runbooks/gateway-go.md#high-error-rate"
+
+      - alert: GatewayHighLatencyP99
+        expr: gateway:proxy_request_duration_seconds:p99 > 0.2
+        for: 10m
+        labels: { severity: page, team: gateway }
+        annotations:
+          summary: "Gateway P99 above 200ms (target: 15µs of overhead)"
+          runbook: "docs/runbooks/gateway-go.md#high-latency"
+
+      - alert: ProviderCircuitBreakerOpen
+        expr: gateway_circuitbreaker_state{state="open"} == 1
+        for: 5m
+        labels: { severity: ticket, team: gateway }
+        annotations:
+          summary: "Circuit breaker open for {{ $labels.provider }}/{{ $labels.model }}"
+
+      - alert: GatewayRateLimitSurge
+        expr: gateway:rate_limit_reject_ratio:5m > 0.10
+        for: 10m
+        labels: { severity: ticket, team: gateway }
+        annotations:
+          summary: "Rate-limit rejections >10% — possible abuse or tier mis-sizing"
+
+  - name: backend-python.alerts
+    rules:
+      - alert: BackendHighErrorRate
+        expr: backend:error_rate:5m > 0.05
+        for: 5m
+        labels: { severity: page, team: backend }
+        annotations:
+          summary: "Backend 5xx rate above 5% on {{ $labels.route }}"
+
+      - alert: BackendHighLatencyP95
+        expr: backend:http_request_duration_seconds:p95 > 0.5
+        for: 15m
+        labels: { severity: ticket, team: backend }
+        annotations:
+          summary: "Backend P95 latency above 500ms on {{ $labels.route }}"
+
+  - name: infra.alerts
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 5m
+        labels: { severity: page, team: sre }
+        annotations:
+          summary: "Prometheus target {{ $labels.job }} ({{ $labels.instance }}) is down"
+
+      - alert: PostgresReplicationLag
+        expr: pg_replication_lag_seconds > 10
+        for: 5m
+        labels: { severity: ticket, team: sre }
+        annotations:
+          summary: "Postgres replica lagging by >10s"
+
+      - alert: RedisDown
+        expr: up{service="redis"} == 0
+        for: 1m
+        labels: { severity: page, team: sre }
+        annotations:
+          summary: "Redis is unreachable — gateway auth degrades to slow-path"

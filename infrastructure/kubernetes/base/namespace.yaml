@@ -1,0 +1,17 @@
+# Namespace for the OpenRouter platform.
+# Pod Security Standards "restricted" labels are applied here so any pod that
+# escapes the explicit securityContext defaults still cannot run privileged.
+# Reference: DRD IN-002 (k8s deployment) and the platform security baseline.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openrouter
+  labels:
+    # Enforce restricted PSS at admission. We deliberately set both 'enforce'
+    # and 'audit' so any future relaxation is visible in audit logs first.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    app.kubernetes.io/name: openrouter
+    app.kubernetes.io/part-of: openrouter
