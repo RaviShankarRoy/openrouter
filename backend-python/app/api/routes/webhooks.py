@@ -10,8 +10,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Header, Request, status
 from fastapi.responses import JSONResponse
 
-from app.core.logging import get_logger
-from app.infrastructure.billing.stripe_client import StripeClient
+from app.shared.logging import get_logger
+from app.repository.billing.stripe_client import StripeClient
 
 router = APIRouter()
 _log = get_logger(__name__)

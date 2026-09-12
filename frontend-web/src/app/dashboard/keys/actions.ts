@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-import { ApiClient } from "@/shared/api/client";
-import { clientEnv } from "@/shared/config/env";
-import { logger } from "@/shared/lib/logger";
-import type { ApiKeyCreateResponse } from "@/entities/api-key/types";
+import { ApiClient } from "@/repository/client";
+import { clientEnv } from "@/service/config/env";
+import { logger } from "@/shared/logger";
+import type { ApiKeyCreateResponse } from "@/service/model/api-key";
 
 // FE-004 server action. Mutations live here so the form can post without a
 // dedicated route handler (Next 15 + React 19 server-action pattern).
@@ -47,8 +47,8 @@ export async function createKeyAction(
 
   try {
     const server = new ApiClient(clientEnv.NEXT_PUBLIC_BACKEND_URL);
-    const key = await server.post<ApiKeyCreateResponse>("/keys", parsed.data, {
-      bearerToken: session.accessToken,
+    const key = await server.post<ApiKeyCreateResponse>("/v1/keys", parsed.data, {
+      bearerToken: session.backendJwt,
     });
     revalidatePath("/dashboard/keys");
     return { status: "success", key };
@@ -64,8 +64,8 @@ export async function revokeKeyAction(keyId: string): Promise<{ ok: boolean; mes
 
   try {
     const server = new ApiClient(clientEnv.NEXT_PUBLIC_BACKEND_URL);
-    await server.delete<void>(`/keys/${encodeURIComponent(keyId)}`, {
-      bearerToken: session.accessToken,
+    await server.delete<void>(`/v1/keys/${encodeURIComponent(keyId)}`, {
+      bearerToken: session.backendJwt,
     });
     revalidatePath("/dashboard/keys");
     return { ok: true };

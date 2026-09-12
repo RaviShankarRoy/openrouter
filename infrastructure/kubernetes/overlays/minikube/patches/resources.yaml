@@ -1,0 +1,98 @@
+# Laptop-sized requests. The dev overlay only shrinks the app deployments;
+# minikube also needs the stateful infra shrunk or nothing schedules.
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: gateway-go }
+spec:
+  template:
+    spec:
+      containers:
+        - name: gateway
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { memory: "256Mi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: backend-python }
+spec:
+  template:
+    spec:
+      containers:
+        - name: backend
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { cpu: "1000m", memory: "1Gi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: backend-celery-worker }
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          resources:
+            requests: { cpu: "50m", memory: "192Mi" }
+            limits: { cpu: "500m", memory: "768Mi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: frontend-web }
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          resources:
+            requests: { cpu: "50m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "384Mi" }
+---
+# Postgres asks for 1 CPU / 2Gi and a 50Gi PVC in base — far too much here.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: postgres }
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          resources:
+            requests: { cpu: "100m", memory: "512Mi" }
+            limits: { cpu: "1000m", memory: "1Gi" }
+  volumeClaimTemplates:
+    - metadata: { name: pgdata }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests: { storage: 2Gi }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: redis }
+spec:
+  template:
+    spec:
+      containers:
+        - name: redis
+          resources:
+            requests: { cpu: "50m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests: { storage: 1Gi }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: nats }
+spec:
+  template:
+    spec:
+      containers:
+        - name: nats
+          resources:
+            requests: { cpu: "50m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }

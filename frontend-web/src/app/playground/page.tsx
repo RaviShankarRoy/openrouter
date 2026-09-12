@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { Chat } from "@/features/playground/chat/Chat";
+import { Chat } from "@/api/components/playground/Chat";
 
 export const metadata: Metadata = { title: "Playground" };
 

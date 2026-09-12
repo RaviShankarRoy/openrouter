@@ -1,0 +1,184 @@
+# deploy/aws/docker-compose.aws.yml — single-server AWS deployment.
+#
+# Runs the REAL production images (built from each service's Dockerfile) plus
+# the data services, behind Caddy which terminates HTTPS with automatic
+# Let's Encrypt certificates.
+#
+# Used as (from the repo root, on the EC2 instance):
+#   docker compose -f deploy/aws/docker-compose.aws.yml --env-file .env.aws up -d --build
+# or simply:
+#   ./deploy/aws/deploy.sh
+#
+# Design choices for a beginner-friendly single box:
+#   - Only Caddy publishes ports (80/443). Postgres/Redis/NATS/app services are
+#     reachable ONLY on the internal compose network — nothing to firewall.
+#   - `restart: unless-stopped` everywhere → the whole stack survives reboots.
+#   - A one-shot `migrate` service runs alembic before the backend starts.
+#   - Named volumes hold all state (pgdata, natsdata, caddy certs).
+
+name: openrouter-aws
+
+services:
+  # ---------- edge: HTTPS termination + routing by hostname ----------
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env.aws}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env.aws}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data          # certificates live here — must persist
+      - caddy-config:/config
+    depends_on:
+      - gateway
+      - frontend
+
+  # ---------- data services (internal only) ----------
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: openrouter
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.aws}
+      POSTGRES_DB: openrouter
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../../infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openrouter -d openrouter"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: valkey/valkey:7.2-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nats:
+    image: nats:2.10-alpine
+    restart: unless-stopped
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    volumes:
+      - natsdata:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ---------- one-shot: run database migrations, then exit ----------
+  migrate:
+    image: openrouter/backend-python:aws
+    build: ../../backend-python
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      POSTGRES_DSN: postgresql+asyncpg://openrouter:${POSTGRES_PASSWORD}@postgres:5432/openrouter
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---------- application services ----------
+  backend:
+    image: openrouter/backend-python:aws
+    restart: unless-stopped
+    env_file: ../../.env.aws
+    environment:
+      ENVIRONMENT: prod
+      POSTGRES_DSN: postgresql+asyncpg://openrouter:${POSTGRES_PASSWORD}@postgres:5432/openrouter
+      REDIS_URL: redis://redis:6379/0
+      NATS_URL: nats://nats:4222
+      CORS_ORIGINS: '["https://app.${DOMAIN}"]'
+      OTEL_SERVICE_NAME: backend-python
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  worker:
+    image: openrouter/backend-python:aws
+    restart: unless-stopped
+    command: ["celery", "-A", "app.repository.celery_app", "worker",
+              "--loglevel=info", "--queues=default,media", "--concurrency=2"]
+    env_file: ../../.env.aws
+    environment:
+      ENVIRONMENT: prod
+      POSTGRES_DSN: postgresql+asyncpg://openrouter:${POSTGRES_PASSWORD}@postgres:5432/openrouter
+      REDIS_URL: redis://redis:6379/0
+      NATS_URL: nats://nats:4222
+      OTEL_SERVICE_NAME: backend-celery-worker
+    depends_on:
+      backend:
+        condition: service_started
+
+  beat:
+    image: openrouter/backend-python:aws
+    restart: unless-stopped
+    command: ["celery", "-A", "app.repository.celery_app", "beat", "--loglevel=info"]
+    env_file: ../../.env.aws
+    environment:
+      ENVIRONMENT: prod
+      REDIS_URL: redis://redis:6379/0
+      OTEL_SERVICE_NAME: backend-celery-beat
+    depends_on:
+      backend:
+        condition: service_started
+
+  gateway:
+    image: openrouter/gateway-go:aws
+    build: ../../gateway-go
+    restart: unless-stopped
+    env_file: ../../.env.aws
+    environment:
+      ENVIRONMENT: prod
+      REDIS_URL: redis://redis:6379/0
+      NATS_URL: nats://nats:4222
+      GATEWAY_BACKEND_GRPC: backend:50051
+      GATEWAY_PROVIDER_CONFIG: /configs/providers.yaml
+      OTEL_SERVICE_NAME: gateway-go
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  frontend:
+    image: openrouter/frontend-web:aws
+    build:
+      context: ../../frontend-web
+      args:
+        # NEXT_PUBLIC_* values are baked into the JS bundle AT BUILD TIME —
+        # that's why they're build args here, not runtime environment.
+        NEXT_PUBLIC_API_BASE_URL: https://api.${DOMAIN}
+        NEXT_PUBLIC_BACKEND_URL: https://api.${DOMAIN}
+    restart: unless-stopped
+    env_file: ../../.env.aws
+    environment:
+      NEXTAUTH_URL: https://app.${DOMAIN}
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  pgdata:
+  redisdata:
+  natsdata:
+  caddy-data:
+  caddy-config:

@@ -125,7 +125,7 @@ We are *not* purely microservices. We are **polyglot services** — four service
 
 Different services written in different languages, picked for their strengths. Cost: you have to maintain four toolchains. Benefit: each service is in the best tool for *its* job.
 
-#### Hexagonal architecture (Go gateway) / DDD (Python backend)
+#### Layered n-tier architecture (Go gateway and Python backend)
 
 Both are ways to organize code so the **business logic** is in the middle, and the **technical details** (HTTP, databases, Redis) are at the edges. The key benefit: you can test the business logic without spinning up a database.
 

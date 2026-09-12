@@ -1,0 +1,23 @@
+# Never ship the local virtualenv — it is multi-GB and platform-specific.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+.git
+.gitignore
+Dockerfile
+.dockerignore
+README.md
+CLAUDE.md
+tests/
+.env
+.env.*
+!.env.example

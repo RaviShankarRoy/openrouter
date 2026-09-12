@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	authv1 "github.com/openrouter/gateway-go/internal/proto/auth/v1"
+	authv1 "github.com/openrouter/gateway-go/internal/repository/proto/auth/v1"
 )
 
 func main() {

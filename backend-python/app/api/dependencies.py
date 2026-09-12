@@ -15,15 +15,15 @@ from uuid import UUID
 from fastapi import Depends, Header, status
 from fastapi.exceptions import HTTPException
 
-from app.application.services.auth_service import AuthService
-from app.application.services.billing_service import BillingService
-from app.application.uow import UnitOfWork
-from app.core.security import sha256_lookup, verify_api_key
-from app.domain.entities import APIKey, User, UserRole
-from app.domain.errors import Forbidden, InvalidApiKey
-from app.infrastructure.database import get_session_factory
-from app.infrastructure.providers.registry import ProviderRegistry
-from app.infrastructure.uow import SqlUnitOfWork
+from app.service.auth_service import AuthService
+from app.service.billing_service import BillingService
+from app.service.uow import UnitOfWork
+from app.shared.security import sha256_lookup, verify_api_key
+from app.service.domain.entities import APIKey, User, UserRole
+from app.service.domain.errors import Forbidden, InvalidApiKey
+from app.repository.database import get_session_factory
+from app.repository.providers.registry import ProviderRegistry
+from app.repository.uow import SqlUnitOfWork
 
 
 @dataclass(frozen=True, slots=True)

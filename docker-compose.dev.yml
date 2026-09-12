@@ -94,7 +94,7 @@ services:
       sh -c "
         # Wait for backend to finish dep install (shared venv).
         until [ -x /opt/venv/bin/celery ]; do sleep 2; done &&
-        /opt/venv/bin/celery -A app.infrastructure.celery_app worker -l info
+        /opt/venv/bin/celery -A app.repository.celery_app worker -l info
       "
 
   beat:
@@ -112,7 +112,7 @@ services:
     command: >
       sh -c "
         until [ -x /opt/venv/bin/celery ]; do sleep 2; done &&
-        /opt/venv/bin/celery -A app.infrastructure.celery_app beat -l info
+        /opt/venv/bin/celery -A app.repository.celery_app beat -l info
       "
 
   frontend:

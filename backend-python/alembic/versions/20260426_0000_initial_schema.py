@@ -4,7 +4,7 @@ Revision ID: 20260426_0000
 Revises:
 Create Date: 2026-04-26 00:00:00
 
-Creates every table referenced by app.infrastructure.orm_models, plus:
+Creates every table referenced by app.repository.orm_models, plus:
   - pgvector extension (semantic cache, DRD §13.4)
   - model_pricing table (DRD MK-010, BL-011)
   - audit_logs table (DRD CO-007)

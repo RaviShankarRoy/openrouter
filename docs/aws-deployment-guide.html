@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploying to AWS — Beginner Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --paper: #F5F7F9; --ink: #182430; --muted: #5B6C79;
+    --accent: #0F7B85; --accent-soft: #0F7B8514;
+    --hazard: #A8590E; --hazard-soft: #A8590E12;
+    --card: #FFFFFF; --line: #D9E1E7; --chip-bg: #E8EEF2;
+    --code-bg: #0E1A21; --code-ink: #D6E4EB; --code-accent: #7FD0D8;
+    --code-comment: #6E8896; --code-str: #C9B47F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0D151B; --ink: #DCE6EC; --muted: #8DA1AE;
+      --accent: #45B8C2; --accent-soft: #45B8C21A;
+      --hazard: #E0A057; --hazard-soft: #E0A05714;
+      --card: #131F27; --line: #233440; --chip-bg: #1A2932;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--paper); color: var(--ink); font-family: "Source Serif 4", Georgia, serif;
+         font-size: 1.04rem; line-height: 1.65; margin: 0; padding: 0 1.25rem 6rem; }
+  .wrap { max-width: 48rem; margin: 0 auto; }
+  h1, h2, h3 { font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; line-height: 1.15; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.1rem, 5.5vw, 3rem); font-weight: 800; letter-spacing: -0.015em; }
+  h2 { font-size: 1.55rem; font-weight: 700; margin: 0 0 0.9rem; }
+  h3 { font-size: 1.13rem; font-weight: 700; margin: 2rem 0 0.6rem; }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  strong { font-weight: 600; }
+  .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; font-weight: 600;
+             letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin: 0 0 0.8rem; }
+  header.hero { padding: 4rem 0 2.5rem; border-bottom: 2px solid var(--ink); margin-bottom: 2.5rem; }
+  .hero .lede { font-size: 1.15rem; color: var(--muted); max-width: 42rem; margin-top: 1.1rem; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.5rem; }
+  .chip { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; background: var(--chip-bg);
+          border: 1px solid var(--line); border-radius: 3px; padding: 0.22rem 0.55rem; white-space: nowrap; }
+  section { margin: 0 0 3.5rem; scroll-margin-top: 1.5rem; }
+  .part-head { border-top: 2px solid var(--ink); padding-top: 1.1rem; margin-bottom: 1.4rem; }
+  .part-head .eyebrow { margin-bottom: 0.4rem; }
+  code { font-family: "JetBrains Mono", monospace; font-size: 0.83em; background: var(--chip-bg);
+         border-radius: 3px; padding: 0.08em 0.32em; }
+  .codeblock { margin: 1.25rem 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+  .codeblock .bar { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; letter-spacing: 0.05em;
+                    background: var(--chip-bg); color: var(--muted); padding: 0.4rem 0.9rem; border-bottom: 1px solid var(--line); }
+  .codeblock pre { margin: 0; background: var(--code-bg); color: var(--code-ink); padding: 0.9rem 1rem;
+                   overflow-x: auto; font-family: "JetBrains Mono", monospace; font-size: 0.8rem; line-height: 1.55; }
+  .codeblock pre .c { color: var(--code-comment); }
+  .codeblock pre .s { color: var(--code-str); }
+  .note, .landmine { border-radius: 5px; padding: 0.9rem 1.1rem; margin: 1.25rem 0; font-size: 0.97rem; }
+  .note { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+  .landmine { background: var(--hazard-soft); border-left: 3px solid var(--hazard); }
+  .note .tag, .landmine .tag { font-family: "JetBrains Mono", monospace; font-size: 0.68rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase; display: block; margin-bottom: 0.35rem; }
+  .note .tag { color: var(--accent); } .landmine .tag { color: var(--hazard); }
+  .note p:last-child, .landmine p:last-child { margin-bottom: 0; }
+  .tablewrap { overflow-x: auto; margin: 1.25rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th { font-family: "Archivo", sans-serif; font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+       letter-spacing: 0.06em; text-align: left; padding: 0.5rem 0.8rem; border-bottom: 2px solid var(--ink); white-space: nowrap; }
+  td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1rem; }
+  li { margin-bottom: 0.4rem; }
+  li::marker { color: var(--accent); }
+  .diagram { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1.2rem; margin: 1.5rem 0; overflow-x: auto; }
+  .diagram .row { display: flex; gap: 0.6rem; align-items: stretch; margin-bottom: 0.6rem; }
+  .diagram .row:last-child { margin-bottom: 0; }
+  .dbox { border: 1.5px solid var(--ink); border-radius: 4px; padding: 0.45rem 0.7rem;
+          font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-align: center;
+          min-width: 5rem; flex: 1; background: var(--paper); }
+  .dbox.accent { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .dbox.soft { border-style: dashed; color: var(--muted); }
+  .darrow { align-self: center; color: var(--muted); font-family: "JetBrains Mono", monospace; font-size: 0.8rem; white-space: nowrap; }
+  .dlabel { font-family: "Archivo", sans-serif; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--muted); margin: 0 0 0.5rem; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">OpenRouter Gateway · AWS</p>
+  <h1>Deploying to AWS</h1>
+  <p class="lede">The first-timer path: one EC2 server, Docker Compose, and automatic HTTPS — the whole platform live on the internet in an afternoon, paid for entirely by the free credits your new AWS account came with. Everything scripted; every console click spelled out; no card charge possible on the Free plan.</p>
+  <div class="hero-meta">
+    <span class="chip">route: EC2 + Compose + Caddy</span>
+    <span class="chip">cost: $0 — runs on Free-plan credits</span>
+    <span class="chip">credit burn: ~$1.20/day testing · ~$0.20/day parked</span>
+    <span class="chip">time: ~2–3 hours first time</span>
+    <span class="chip">prereq: docs/deployment-deep-dive.html Ch. 1–4</span>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<section id="overview">
+  <div class="part-head">
+    <p class="eyebrow">Overview</p>
+    <h2>What you're building, and why this route</h2>
+  </div>
+  <p>AWS offers a dozen ways to run containers. For a first deployment, almost all of them are the wrong choice: EKS (managed Kubernetes — what this repo's manifests ultimately target) costs ~$73/month <em>before</em> any servers and demands the full Kubernetes learning curve up front; ECS Fargate is simpler but hides Docker behind AWS-specific concepts. The beginner route is the classic one: <strong>rent one Linux server (EC2), run the same Docker Compose you already understand, and put Caddy in front for free automatic HTTPS.</strong> Everything you learned in the deployment deep-dive applies directly, and the skills transfer when you later graduate to EKS.</p>
+  <div class="diagram">
+    <p class="dlabel">Target architecture</p>
+    <div class="row"><div class="dbox soft">Browser / API client</div></div>
+    <div class="row"><div class="dbox">DNS: api.yourdomain.com · app.yourdomain.com → Elastic IP</div></div>
+    <div class="row"><div class="dbox accent">EC2 instance (Ubuntu) — ports 80/443 open</div></div>
+    <div class="row"><div class="dbox">Caddy — HTTPS termination, routes by hostname</div></div>
+    <div class="row">
+      <div class="dbox">gateway :8080<br>(api.*)</div>
+      <div class="dbox">frontend :3000<br>(app.*)</div>
+      <div class="dbox">backend :8000/:50051</div>
+    </div>
+    <div class="row">
+      <div class="dbox">worker + beat</div>
+      <div class="dbox soft">postgres · redis · nats<br>(named volumes, internal only)</div>
+    </div>
+  </div>
+  <p>Five files in <code>deploy/aws/</code> implement this, plus one guide (this page):</p>
+  <div class="tablewrap"><table>
+    <tr><th>File</th><th>Role</th></tr>
+    <tr><td><code>docker-compose.aws.yml</code></td><td>The whole stack: builds the three production images, runs postgres/redis/nats, one-shot DB migration, Caddy edge. Only Caddy publishes ports.</td></tr>
+    <tr><td><code>Caddyfile</code></td><td>Routes <code>api.*</code> → gateway, <code>app.*</code> → frontend; obtains/renews Let's Encrypt certificates automatically; streams SSE unbuffered.</td></tr>
+    <tr><td><code>.env.aws.example</code></td><td>Template for the one config file you fill in: domain, secrets, provider keys.</td></tr>
+    <tr><td><code>setup-server.sh</code></td><td>One-time server prep: Docker, swap, boot persistence.</td></tr>
+    <tr><td><code>deploy.sh</code></td><td>Every deploy: pull → build → migrate → start → health-check. Safe to re-run.</td></tr>
+    <tr><td><code>backup-db.sh</code></td><td>Nightly-croppable Postgres dump, optional S3 upload, 7-day rotation.</td></tr>
+  </table></div>
+
+  <h3>What it draws from your credits</h3>
+  <p>Approximate on-demand prices (us-east-1; other regions vary by a few percent). AWS bills EC2 <em>per second while running</em> — a two-hour test session costs two hours, not a day.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Item</th><th>Choice</th><th>Rate</th></tr>
+    <tr><td>EC2 instance</td><td><code>t3.medium</code> (2 vCPU, 4 GB — right size for testing; the setup script's swap covers builds)</td><td>~$0.042/hour <em>while running</em></td></tr>
+    <tr><td>Storage</td><td>30 GB gp3 EBS volume</td><td>~$2.40/month, running or stopped</td></tr>
+    <tr><td>Public IPv4 (Elastic IP)</td><td>AWS charges all public IPv4 addresses since 2024</td><td>~$0.005/hour ≈ $3.65/month</td></tr>
+    <tr><td>Data transfer</td><td>First 100 GB out/month free</td><td>$0 at your scale</td></tr>
+    <tr><td>Domain</td><td>Cheap registrar domain, or free via DuckDNS (Step 2)</td><td>$0–4 once (outside AWS)</td></tr>
+  </table></div>
+  <p>What that means in practice: <strong>~$1.20/day while the server runs, ~$0.20/day while it's stopped</strong>. Your $100 starting credit covers roughly 2,300 hours of t3.medium runtime — with the start–stop routine below, months of testing. A <code>t3.large</code> (8 GB, ~$0.083/h) is a comfort upgrade to consider only if builds feel slow.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="freeplan">
+  <div class="part-head">
+    <p class="eyebrow">Know your account</p>
+    <h2>The Free plan: your credit budget</h2>
+  </div>
+  <p>AWS changed its free tier in July 2025. A new account like yours no longer gets "12 months of tiny free instances" — instead, at signup you chose the <strong>Free plan</strong>, which works like this:</p>
+  <ul>
+    <li><strong>$100 in credits</strong> the moment the account is created, spendable on almost any AWS service — including everything this guide uses (EC2, EBS storage, the public IP).</li>
+    <li><strong>Up to $100 more</strong> for completing short "explore" activities in the console — launching an EC2 instance and creating a budget are two of them, and this guide has you do both anyway. Do the activities; it can double your testing time for free.</li>
+    <li><strong>A hard time limit:</strong> the plan lasts <em>6 months or until the credits run out, whichever comes first</em>. Note your signup date now and put a reminder at month 5.</li>
+    <li><strong>No bill possible.</strong> A Free-plan account cannot charge your card. When credits or the 6 months are exhausted, the account simply stops and closes instead — so the classic beginner fear ("what if I forget something and get a $500 bill?") does not apply to you. The thing to protect is your <em>credit balance</em>, not your card.</li>
+    <li><strong>The exit, in advance:</strong> when the plan ends, your resources stop. You then have a <strong>90-day window</strong> to upgrade to the Paid (pay-as-you-go) plan and pick up exactly where you left off — leftover credits even carry over. After 90 days, AWS deletes everything. The "Before the free plan ends" section below turns this into a checklist so it never surprises you.</li>
+  </ul>
+  <div class="note"><span class="tag">Where to watch the balance</span>
+  <p>Console → <strong>Billing and Cost Management → Credits</strong> shows the remaining amount and expiry. Glance at it after each testing week; with the routine below your burn rate will be so low that this becomes a formality. (If your account predates July 2025 it's on the old 12-month free tier instead — its always-free instances are 1 GB machines, too small for this stack, so the sizing advice here stays the same.)</p></div>
+  <p><strong>The one habit that stretches $100 across months:</strong> an EC2 instance bills only while running, and this deployment is built to survive stops — data lives on the disk and in named volumes, the stack restarts itself on boot, and the Elastic IP keeps your DNS valid across stops. So: deploy once, and between testing sessions <em>stop</em> the server (~$0.20/day parked vs ~$1.20/day running). The exact click-path is in "The start–stop testing routine" below.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="step0">
+  <div class="part-head">
+    <p class="eyebrow">Step 0</p>
+    <h2>First hour in AWS, safely</h2>
+  </div>
+  <p>Never used AWS before? Three ideas orient everything: the <strong>console</strong> (the website) is where you click things; every resource lives in one <strong>region</strong> (a physical location you pick); and there are two kinds of login — the all-powerful <strong>root user</strong> (email + password you signed up with) and <strong>IAM users</strong> you create for daily work.</p>
+  <ol>
+    <li><strong>Create the account</strong> at aws.amazon.com if you haven't — choose the <strong>Free plan</strong> when asked. (A card is required for identity verification, but on the Free plan it is never charged.)</li>
+    <li><strong>Secure the root user:</strong> IAM → root user → assign MFA device (your phone's authenticator app). Then stop using root for daily work.</li>
+    <li><strong>Create an admin IAM user:</strong> IAM → Users → Create user → name it, enable console access → attach the <code>AdministratorAccess</code> policy → enable MFA on it too. Log in as this user from now on.</li>
+    <li><strong>Create a budget</strong> (this is also one of the credit-earning activities): Billing and Cost Management → Budgets → Create budget → monthly cost budget of $20 with an email alert. On the Free plan this guards your credits; if you ever upgrade to Paid, it starts guarding your card.</li>
+    <li><strong>Do the "explore" activities</strong> on the console home / Free Tier page to unlock the extra credits — a few minutes each.</li>
+    <li><strong>Pick one region and stick to it</strong> — e.g. <code>ap-south-1</code> (Mumbai, closest to you) or <code>us-east-1</code> (usually cheapest). Resources are per-region; a "missing" instance is almost always the console showing the wrong region (top-right dropdown).</li>
+  </ol>
+</section>
+
+<!-- ============================================================ -->
+<section id="step1">
+  <div class="part-head">
+    <p class="eyebrow">Step 1</p>
+    <h2>Launch the server</h2>
+  </div>
+  <p>Console → EC2 → <strong>Launch instance</strong>, then:</p>
+  <ol>
+    <li><strong>Name:</strong> <code>openrouter-prod</code></li>
+    <li><strong>AMI (operating system):</strong> Ubuntu Server 24.04 LTS, 64-bit x86.</li>
+    <li><strong>Instance type:</strong> <code>t3.medium</code> — the sweet spot for Free-plan credits. (Upgrade to <code>t3.large</code> later only if builds feel slow; it burns credits twice as fast.)</li>
+    <li><strong>Key pair:</strong> Create new → name <code>openrouter-key</code> → type ED25519 → <code>.pem</code>. The file downloads once — keep it; it's your SSH login.</li>
+    <li><strong>Network settings → Edit:</strong> create a security group named <code>openrouter-sg</code> with three inbound rules:
+      <ul>
+        <li>SSH (22) — Source: <em>My IP</em> (never 0.0.0.0/0 for SSH)</li>
+        <li>HTTP (80) — Source: Anywhere (0.0.0.0/0) — needed for certificate issuance + redirect</li>
+        <li>HTTPS (443) — Source: Anywhere (0.0.0.0/0)</li>
+      </ul>
+      A security group is AWS's firewall — this is why the compose file never publishing database ports matters twice over.</li>
+    <li><strong>Storage:</strong> 30 GiB, gp3.</li>
+    <li><strong>Launch instance.</strong></li>
+  </ol>
+  <p><strong>Then give it a permanent address:</strong> EC2 → Elastic IPs → Allocate → Allocate. Select it → Actions → Associate → pick your instance. Without this, the server's public IP changes on every stop/start and your DNS breaks.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="step2">
+  <div class="part-head">
+    <p class="eyebrow">Step 2</p>
+    <h2>Point your domain at it</h2>
+  </div>
+  <div class="note"><span class="tag">No domain? Two zero-to-cheap options</span>
+  <p><strong>Free:</strong> DuckDNS (duckdns.org — sign in, claim a name like <code>yourname.duckdns.org</code>, set its IP to your Elastic IP). DuckDNS resolves any prefix of your name to the same IP, so <code>api.yourname.duckdns.org</code> and <code>app.yourname.duckdns.org</code> both work — just set <code>DOMAIN=yourname.duckdns.org</code> in <code>.env.aws</code> and skip the A-record table below. Fine for testing; not something to put in front of real users. <strong>Cheap and yours:</strong> a <code>.xyz</code>/<code>.site</code>-style domain from any registrar runs $2–4 for the first year and behaves exactly like the instructions below.</p></div>
+  <p>If you have a domain: at your DNS provider (wherever the domain lives — Namecheap, Cloudflare, Route 53…), create two <strong>A records</strong> pointing at the Elastic IP:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Type</th><th>Name</th><th>Value</th></tr>
+    <tr><td>A</td><td><code>api</code></td><td>&lt;your Elastic IP&gt;</td></tr>
+    <tr><td>A</td><td><code>app</code></td><td>&lt;your Elastic IP&gt;</td></tr>
+  </table></div>
+  <p>Verify propagation from your laptop before proceeding (both must return the Elastic IP):</p>
+  <div class="codeblock"><div class="bar">laptop</div><pre>
+nslookup api.yourdomain.com
+nslookup app.yourdomain.com</pre></div>
+  <div class="note"><span class="tag">Why this matters now</span>
+  <p>Caddy proves domain ownership to Let's Encrypt by answering a challenge on port 80. If DNS doesn't resolve to your server yet, certificate issuance fails (it retries automatically, but you'll stare at TLS errors in the meantime). If you use Cloudflare, set these two records to <em>DNS only</em> (grey cloud) until certificates are issued.</p></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="step3">
+  <div class="part-head">
+    <p class="eyebrow">Step 3</p>
+    <h2>Prepare the server</h2>
+  </div>
+  <div class="codeblock"><div class="bar">laptop</div><pre>
+chmod 400 ~/Downloads/openrouter-key.pem
+ssh -i ~/Downloads/openrouter-key.pem ubuntu@&lt;ELASTIC-IP&gt;</pre></div>
+  <p>You're now on the server. Get the code up there. Easiest: push this repo to a <strong>private GitHub repository</strong> first, then clone it on the server (GitHub → your repo → Code → HTTPS URL; use a fine-grained personal access token as the password, or set up a deploy key):</p>
+  <div class="codeblock"><div class="bar">server</div><pre>
+git clone https://github.com/&lt;you&gt;/&lt;repo&gt;.git openrouter
+cd openrouter
+bash deploy/aws/setup-server.sh
+<span class="c"># installs Docker + Compose, adds 4GB swap, enables Docker on boot.</span>
+<span class="c"># when it finishes: log out, then ssh back in (docker group takes effect on new login)</span>
+exit</pre></div>
+  <div class="landmine"><span class="tag">Before you push to GitHub</span>
+  <p>The repo's <code>.env</code> contains a real leaked Google OAuth secret (<code>GOCSPX-…</code>). <code>.env</code> is gitignored so it won't be pushed — but rotate that credential anyway in Google Cloud Console, and run <code>git status</code> to confirm no <code>.env*</code> file is staged before your first push. <code>.env.aws</code> is also gitignored (added alongside this guide).</p></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="step4">
+  <div class="part-head">
+    <p class="eyebrow">Step 4</p>
+    <h2>Configure — one file</h2>
+  </div>
+  <div class="codeblock"><div class="bar">server — ~/openrouter</div><pre>
+cp deploy/aws/.env.aws.example .env.aws
+openssl rand -hex 32    <span class="c"># run three times — one output per secret below</span>
+nano .env.aws</pre></div>
+  <p>Fill in, minimum:</p>
+  <ul>
+    <li><code>DOMAIN</code> — your bare domain (e.g. <code>example.com</code>; the stack serves <code>api.</code> and <code>app.</code> under it)</li>
+    <li><code>ACME_EMAIL</code> — your email (Let's Encrypt expiry notices)</li>
+    <li><code>POSTGRES_PASSWORD</code>, <code>SECRET_KEY</code>, <code>NEXTAUTH_SECRET</code> — one <code>openssl rand -hex 32</code> output each</li>
+    <li>At least one LLM provider key (e.g. <code>OPENAI_API_KEY</code>) if you want real completions; OAuth and Stripe keys can wait.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="step5">
+  <div class="part-head">
+    <p class="eyebrow">Step 5</p>
+    <h2>Deploy</h2>
+  </div>
+  <div class="codeblock"><div class="bar">server — ~/openrouter</div><pre>
+./deploy/aws/deploy.sh</pre></div>
+  <p>What happens, in order (all visible in the output): images build (~15–25 min the first time on a t3.medium — Go compile, pip install, Next.js build; cached and fast afterwards) → postgres/redis/nats start and pass healthchecks → the <code>migrate</code> one-shot runs <code>alembic upgrade head</code> and exits → backend, worker, beat, gateway, frontend start → Caddy starts, and on the first request to each hostname fetches its certificate. The script ends with container status and health checks.</p>
+  <p><strong>Verify from your laptop:</strong></p>
+  <div class="codeblock"><div class="bar">laptop</div><pre>
+curl https://api.yourdomain.com/health     <span class="c"># gateway says ok — with a valid certificate</span>
+<span class="c"># then open https://app.yourdomain.com in a browser</span></pre></div>
+  <p>Congratulations — the platform is live on the internet. Take the moment; the first one only happens once.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="startstop">
+  <div class="part-head">
+    <p class="eyebrow">The credit-saver</p>
+    <h2>The start–stop testing routine</h2>
+  </div>
+  <p>This is how you make $100 of credits last for your whole testing period. The deployment was designed for it: every service has <code>restart: unless-stopped</code>, Docker is enabled on boot, all data lives on the persistent disk, and the Elastic IP keeps your DNS pointing at the right place across stops.</p>
+  <h3>Done testing for the day → stop the server</h3>
+  <ol>
+    <li>EC2 console → Instances → select <code>openrouter-prod</code>.</li>
+    <li>Instance state → <strong>Stop instance</strong>. (<em>Stop</em>, never <em>Terminate</em> — Terminate deletes the machine and its disk.)</li>
+  </ol>
+  <p>While stopped you burn only ~<strong>$0.20/day</strong> (disk + reserved IP). The database, your <code>.env.aws</code>, built images, TLS certificates — everything — sits safely on the disk.</p>
+  <h3>Ready to test again → start it</h3>
+  <ol>
+    <li>Instance state → <strong>Start instance</strong>, wait 2–3 minutes.</li>
+    <li>That's it. Docker starts on boot and brings the whole stack back by itself — no SSH needed. Verify from your laptop: <code>curl https://api.yourdomain.com/health</code>.</li>
+  </ol>
+  <div class="note"><span class="tag">Why nothing breaks</span>
+  <p>The Elastic IP is the load-bearing piece: without it, every stop/start would hand the server a new public IP and your DNS records would point at a stranger. With it, the address — and therefore your domains and certificates — survives every stop. This is exactly why Step 1 allocated one.</p></div>
+  <div class="landmine"><span class="tag">Two habits that waste credits</span>
+  <p>(1) Forgetting the instance running overnight — harmless once (~$1), wasteful as a pattern; make stopping part of ending a session. (2) Orphaned resources: if you ever experiment beyond this guide, check EC2 → Instances and Elastic IPs <em>in every region you've touched</em> when cleaning up — an allocated-but-unattached Elastic IP quietly drains ~$3.65/month.</p></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="ops">
+  <div class="part-head">
+    <p class="eyebrow">Day 2</p>
+    <h2>Everyday operations</h2>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th>Task</th><th>Command (on the server, in ~/openrouter)</th></tr>
+    <tr><td>Ship new code</td><td><code>./deploy/aws/deploy.sh</code> (pulls, rebuilds only what changed, restarts only what changed)</td></tr>
+    <tr><td>Watch logs</td><td><code>docker compose -f deploy/aws/docker-compose.aws.yml --env-file .env.aws logs -f backend</code> (or gateway, caddy, …)</td></tr>
+    <tr><td>Status</td><td><code>… ps</code> — every service should say <code>running</code>, healthchecked ones <code>healthy</code></td></tr>
+    <tr><td>Restart one service</td><td><code>… restart gateway</code></td></tr>
+    <tr><td>Stop everything</td><td><code>… down</code> (data survives in named volumes)</td></tr>
+    <tr><td>Back up the database</td><td><code>./deploy/aws/backup-db.sh</code> — put it in cron nightly (instructions in the script header)</td></tr>
+    <tr><td>Server reboot</td><td>Nothing to do — <code>restart: unless-stopped</code> + Docker enabled on boot brings the stack back by itself</td></tr>
+    <tr><td>OS security patches</td><td><code>sudo apt update && sudo apt upgrade -y</code> monthly; reboot if the kernel updated</td></tr>
+  </table></div>
+
+  <h3>Troubleshooting</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Symptom</th><th>Likely cause → fix</th></tr>
+    <tr><td>Browser shows TLS/certificate error</td><td>DNS not propagated yet, or port 80 closed. Check <code>nslookup</code>, the security group, and <code>… logs caddy</code> for the ACME error.</td></tr>
+    <tr><td><code>backend</code> restarts repeatedly</td><td><code>… logs backend</code> — usually a bad value in <code>.env.aws</code> (DSN password mismatch if you changed <code>POSTGRES_PASSWORD</code> after first boot: the DB keeps its original password inside the <code>pgdata</code> volume).</td></tr>
+    <tr><td>Build killed / server freezes during build</td><td>Out of memory on a small instance. The setup script's 4 GB swap prevents this; confirm with <code>free -h</code>. Worst case, build one service at a time: <code>… build backend</code> etc.</td></tr>
+    <tr><td>Frontend calls the wrong API URL</td><td><code>NEXT_PUBLIC_*</code> values are baked at <em>build</em> time. After changing <code>DOMAIN</code>, rebuild: <code>… build frontend && … up -d frontend</code>.</td></tr>
+    <tr><td>Disk fills up over time</td><td>Old image layers. <code>docker system prune -f</code> reclaims them (safe; running containers are untouched).</td></tr>
+    <tr><td>Can't SSH anymore</td><td>Your home IP changed and the security group pins SSH to the old one — edit the SSH rule's source in the console.</td></tr>
+    <tr><td>Credits draining faster than expected</td><td>Something is running that you forgot. Check EC2 → Instances and Elastic IPs in every region you've used (top-right region dropdown), and Billing → Bills to see exactly which service is consuming credits.</td></tr>
+    <tr><td>Site unreachable after starting the instance</td><td>Give it the full 2–3 minutes; then <code>… ps</code> over SSH. If you're not using an Elastic IP, the public IP changed on stop/start and your DNS is stale — associate the Elastic IP from Step 1.</td></tr>
+  </table></div>
+
+  <h3>Security checklist</h3>
+  <ul>
+    <li>SSH restricted to your IP; login by key only (Ubuntu AMI default — no passwords).</li>
+    <li>Only 80/443 open to the world; databases unreachable from outside by two layers (no published ports + security group).</li>
+    <li>All secrets live in <code>.env.aws</code>, which is gitignored and exists only on the server.</li>
+    <li>Budget alert armed (guards your credits now, your card if you ever upgrade); MFA on root and your IAM user.</li>
+    <li>Nightly <code>backup-db.sh</code> in cron — a backup you've never restored is a hope, not a backup: test the restore command once.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="planend">
+  <div class="part-head">
+    <p class="eyebrow">Month 5</p>
+    <h2>Before the free plan ends</h2>
+  </div>
+  <p>The plan ends at 6 months or zero credits, whichever comes first — and then the account closes and resources stop. Handled a few weeks early, this is a non-event. The checklist:</p>
+  <ol>
+    <li><strong>Check the runway:</strong> Billing and Cost Management → Credits (balance and expiry date).</li>
+    <li><strong>Get your data out, regardless of what you decide next:</strong>
+      <div class="codeblock"><div class="bar">server, then laptop</div><pre>
+./deploy/aws/backup-db.sh                       <span class="c"># on the server: dump the database</span>
+scp -i openrouter-key.pem ubuntu@&lt;IP&gt;:openrouter/backups/*.sql.gz .   <span class="c"># from your laptop</span></pre></div>
+      Your code is already on GitHub and <code>.env.aws</code> is small enough to copy the same way — with those three things you can rebuild this deployment anywhere (any cloud, or a fresh AWS account) in under an hour.</li>
+    <li><strong>Then choose one:</strong>
+      <ul>
+        <li><em>Keep going on AWS:</em> upgrade to the Paid plan (Billing → your plan → upgrade). Everything keeps running unchanged, leftover credits apply to your first bills, and from that moment the budget alert from Step 0 is guarding a real card — the start–stop routine now saves real money instead of credits.</li>
+        <li><em>Wind down:</em> terminate the instance (Instance state → Terminate) and release the Elastic IP (Elastic IPs → Release). The account will close on its own; you have 90 days to change your mind by upgrading, after which AWS deletes what's left.</li>
+      </ul></li>
+  </ol>
+</section>
+
+<!-- ============================================================ -->
+<section id="growing">
+  <div class="part-head">
+    <p class="eyebrow">Later</p>
+    <h2>When you outgrow one server</h2>
+  </div>
+  <p>This setup honestly serves a surprising amount of traffic — thousands of users — and its ceiling is simple to raise first (resize the instance a size up; 5-minute downtime). The real limits are architectural: one machine is one failure domain, no autoscaling, deploys briefly restart services. When those start to hurt, this repo is unusually ready for the next step — it's what everything you've studied was built for:</p>
+  <ul>
+    <li><strong>Managed data first:</strong> move Postgres to RDS and Redis to ElastiCache (the Terraform in <code>infrastructure/terraform/environments/dev/</code> already provisions both), point <code>.env.aws</code> at them, and the EC2 box becomes stateless and disposable.</li>
+    <li><strong>Then EKS:</strong> the same Terraform stands up the cluster; your kustomize overlays and the minikube experience from the deep-dive labs transfer directly — push images to ECR, adjust the overlay image names, <code>kubectl apply -k</code>.</li>
+  </ul>
+  <p>One honest caveat: this whole "later" path belongs to a Paid-plan account. An EKS control plane alone costs ~$73/month and RDS runs continuously — routes like that would drain a Free plan's credits in weeks. On free credits, the single server <em>is</em> the right architecture.</p>
+  <p style="margin-top:1.5rem; color: var(--muted); font-style: italic;">Written 2026-08-31, revised 2026-09-12 for Free-plan accounts · companion to docs/deployment-deep-dive.html · implementation in deploy/aws/ · Free-plan terms: aws.amazon.com/free</p>
+</section>
+
+</div>
+</body>
+</html>

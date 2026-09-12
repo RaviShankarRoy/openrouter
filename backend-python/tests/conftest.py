@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
     PostgresContainer = None  # type: ignore[assignment,misc]
     RedisContainer = None  # type: ignore[assignment,misc]
 
-from app.infrastructure.database import Base
+from app.repository.database import Base
 
 
 @pytest.fixture(scope="session")
@@ -47,7 +47,7 @@ async def db_session(postgres_container: str) -> AsyncIterator[AsyncSession]:
     """Async session backed by a real Postgres container with schema applied."""
     engine = create_async_engine(postgres_container, echo=False)
     # Import models so metadata is populated before create_all.
-    from app.infrastructure import orm_models  # noqa: F401
+    from app.repository import orm_models  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

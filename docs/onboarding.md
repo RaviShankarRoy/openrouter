@@ -19,9 +19,9 @@ end (PR → CI green → merged), and know where to ask for help.
 Start with a working request and follow it through every layer:
 
 1. `curl -H "Authorization: Bearer $KEY" -X POST http://localhost:8080/api/v1/chat/completions ...`
-2. Read the gateway middleware chain order in [docs/middleware-order.md](middleware-order.md). Open each middleware file in `gateway-go/internal/middleware/`.
-3. Follow the proxy hop into `gateway-go/internal/proxy/` and the corresponding adapter in `backend-python/app/infrastructure/providers/`.
-4. Find where the usage event is emitted (NATS) and where the metering worker consumes it (`backend-python/app/application/services/`).
+2. Read the gateway middleware chain order in [docs/middleware-order.md](middleware-order.md). Open each middleware file in `gateway-go/internal/api/middleware/`.
+3. Follow the proxy hop into `gateway-go/internal/service/proxy/` and the corresponding adapter in `backend-python/app/repository/providers/`.
+4. Find where the usage event is emitted (NATS) and where the metering worker consumes it (`backend-python/app/service/`).
 5. Sketch the trace on paper. Ping your buddy if any layer surprised you.
 
 ## Day 3 — Pick up your first ticket

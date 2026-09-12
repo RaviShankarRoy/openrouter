@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
-import { AuthProvider } from "@/shared/providers/AuthProvider";
-import { QueryProvider } from "@/shared/providers/QueryProvider";
-import { ThemeProvider } from "@/shared/providers/ThemeProvider";
-import { Toaster } from "@/shared/ui/toast";
+import { AuthProvider } from "@/service/providers/AuthProvider";
+import { QueryProvider } from "@/service/providers/QueryProvider";
+import { ThemeProvider } from "@/service/providers/ThemeProvider";
+import { Toaster } from "@/api/ui/toast";
 
 import "./globals.css";
 

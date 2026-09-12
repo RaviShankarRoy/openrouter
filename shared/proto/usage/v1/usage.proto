@@ -4,7 +4,7 @@ syntax = "proto3";
 
 package openrouter.usage.v1;
 
-option go_package = "github.com/openrouter/gateway-go/internal/proto/usage/v1;usagev1";
+option go_package = "github.com/openrouter/gateway-go/internal/repository/proto/usage/v1;usagev1";
 
 import "google/protobuf/timestamp.proto";
 

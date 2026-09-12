@@ -44,11 +44,16 @@ dependencies = [
     "stripe>=11.4",
     # storage
     "aioboto3>=13.2",
-    # ML — pinned heavy deps so they're explicit (DRD §22.2 image size)
-    "sentence-transformers>=3.3",
 ]
 
 [project.optional-dependencies]
+# Semantic cache (DRD §13.4) — Phase 3. Pulls torch + CUDA (~4.6GB), so it is
+# NOT a runtime dependency: nothing under app/ imports it yet, and shipping it
+# would violate the image-size budget in DRD §22.2. Install with:
+#     pip install -e ".[ml]"
+ml = [
+    "sentence-transformers>=3.3",
+]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",

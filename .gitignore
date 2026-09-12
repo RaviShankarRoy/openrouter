@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.env.aws
 *.pem
 *.key
 
@@ -47,5 +48,5 @@ miniodata/
 # Generated
 shared/proto/gen/
 shared/openapi/gen/
-gateway-go/internal/proto/
-backend-python/app/infrastructure/grpc/gen/
+gateway-go/internal/repository/proto/
+backend-python/app/repository/grpc/gen/

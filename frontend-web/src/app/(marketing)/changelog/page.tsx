@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { formatDate } from "@/shared/lib/format";
-import { Badge } from "@/shared/ui/badge";
+import { formatDate } from "@/shared/format";
+import { Badge } from "@/api/ui/badge";
 
 export const metadata: Metadata = {
   title: "Changelog",

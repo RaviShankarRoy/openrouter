@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { Badge } from "@/shared/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Badge } from "@/api/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/api/ui/card";
 
 export const metadata: Metadata = {
   title: "Provider status",

@@ -7,11 +7,11 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.application.services.auth_service import AuthService, CreateKeyCommand
-from app.application.uow import UnitOfWork
-from app.domain.entities import APIKey
-from app.domain.errors import InvalidApiKey, NotFound
-from app.domain.repositories import APIKeyRepository
+from app.service.auth_service import AuthService, CreateKeyCommand
+from app.service.uow import UnitOfWork
+from app.service.domain.entities import APIKey
+from app.service.domain.errors import InvalidApiKey, NotFound
+from app.service.domain.repositories import APIKeyRepository
 
 
 class _InMemoryKeyRepo(APIKeyRepository):

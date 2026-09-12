@@ -1,0 +1,1605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Day to React</title>
+<meta name="description" content="An hour-by-hour React interview plan for a Java backend developer: Java-to-React translations, six deep dives, hand-typed practice apps, and 25 self-test drills.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%9B%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<style>
+
+  /* ── reset (supplied by the artifact host; needed for a standalone file) ── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; }
+  img, svg { display: block; max-width: 100%; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  table { border-collapse: collapse; }
+
+
+  :root {
+    --paper:      #f5f6f4;
+    --surface:    #ffffff;
+    --ink:        #161c1e;
+    --ink-soft:   #55605f;
+    --ink-faint:  #7b8785;
+    --rule:       #dde1de;
+    --java:       #a2661a;
+    --java-wash:  #f6ecdc;
+    --react:      #0d6f66;
+    --react-wash: #e1f0ed;
+    --code-bg:    #eef1ee;
+    --warn:       #a33218;
+    --warn-wash:  #fbe9e4;
+
+    --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", "Source Serif 4", Georgia, serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+
+    --measure: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #101416;
+      --surface:    #161c1e;
+      --ink:        #e7ebe9;
+      --ink-soft:   #9aa6a4;
+      --ink-faint:  #788482;
+      --rule:       #263032;
+      --java:       #e0a44a;
+      --java-wash:  #2a2015;
+      --react:      #4cb9aa;
+      --react-wash: #12282a;
+      --code-bg:    #1a2123;
+      --warn:       #e8836a;
+      --warn-wash:  #2d1a15;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #101416;
+    --surface:    #161c1e;
+    --ink:        #e7ebe9;
+    --ink-soft:   #9aa6a4;
+    --ink-faint:  #788482;
+    --rule:       #263032;
+    --java:       #e0a44a;
+    --java-wash:  #2a2015;
+    --react:      #4cb9aa;
+    --react-wash: #12282a;
+    --code-bg:    #1a2123;
+    --warn:       #e8836a;
+    --warn-wash:  #2d1a15;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16.5px;
+    line-height: 1.62;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 1.25rem 6rem;
+  }
+
+  @media (min-width: 1000px) {
+    .page {
+      grid-template-columns: 216px minmax(0, 1fr);
+      gap: 3.5rem;
+      padding: 0 2rem 6rem;
+    }
+  }
+
+  /* ── masthead ─────────────────────────────── */
+  .masthead {
+    grid-column: 1 / -1;
+    border-bottom: 2px solid var(--ink);
+    padding: 3.5rem 0 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.9rem;
+  }
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2.4rem, 6.5vw, 3.9rem);
+    line-height: 1.02;
+    letter-spacing: -0.018em;
+    margin: 0 0 0.7rem;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-family: var(--font-display);
+    font-size: clamp(1.02rem, 2.1vw, 1.2rem);
+    color: var(--ink-soft);
+    max-width: 56ch;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ── nav rail ─────────────────────────────── */
+  .rail { display: none; }
+  @media (min-width: 1000px) {
+    .rail {
+      display: block;
+      position: sticky;
+      top: 1.5rem;
+      align-self: start;
+      max-height: calc(100vh - 3rem);
+      overflow-y: auto;
+      font-size: 0.83rem;
+      padding-bottom: 2rem;
+    }
+  }
+  .rail p {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.85rem;
+  }
+  .rail ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+  .rail a {
+    display: grid;
+    grid-template-columns: 3.2rem 1fr;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    color: var(--ink-soft);
+    text-decoration: none;
+    border-top: 1px solid var(--rule);
+    line-height: 1.3;
+  }
+  .rail li:last-child a { border-bottom: 1px solid var(--rule); }
+  .rail a:hover { color: var(--react); }
+  .rail .h {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .rail a:hover .h { color: var(--react); }
+  .pri { color: var(--java); font-size: 0.72em; letter-spacing: -0.08em; margin-left: 0.28em; }
+
+  main { grid-column: 1 / -1; min-width: 0; }
+  @media (min-width: 1000px) { main { grid-column: 2; } }
+
+  /* ── sections ─────────────────────────────── */
+  section { margin-bottom: 3.5rem; scroll-margin-top: 1.5rem; }
+
+  .block-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+    border-top: 2px solid var(--ink);
+    padding-top: 0.7rem;
+    margin-bottom: 1.4rem;
+  }
+  .clock {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    color: var(--surface);
+    background: var(--ink);
+    padding: 0.16rem 0.5rem;
+    border-radius: 2px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.55rem, 3.4vw, 2.05rem);
+    letter-spacing: -0.012em;
+    line-height: 1.12;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--font-body);
+    font-weight: 650;
+    font-size: 1.02rem;
+    letter-spacing: 0.005em;
+    margin: 2.2rem 0 0.7rem;
+    color: var(--ink);
+  }
+  h4 {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 1.8rem 0 0.6rem;
+  }
+
+  p, li { max-width: var(--measure); }
+  p { margin: 0 0 1rem; }
+  ul, ol.prose { padding-left: 1.15rem; margin: 0 0 1rem; }
+  ul li, ol.prose li { margin-bottom: 0.4rem; }
+
+  a { color: var(--react); }
+  strong { font-weight: 650; }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 0.1em 0.34em;
+    border-radius: 3px;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border-left: 3px solid var(--react);
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    margin: 0 0 1.15rem;
+    border-radius: 0 4px 4px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.83rem;
+    line-height: 1.62;
+  }
+  .c { color: var(--ink-faint); font-style: italic; }
+
+  /* ── translation table ────────────────────── */
+  .tablewrap { overflow-x: auto; margin: 0 0 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; min-width: 540px; }
+  th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    border-bottom: 1.5px solid var(--ink);
+    padding: 0 0.9rem 0.5rem 0;
+  }
+  td { border-bottom: 1px solid var(--rule); padding: 0.62rem 0.9rem 0.62rem 0; vertical-align: top; }
+  td:last-child, th:last-child { padding-right: 0; }
+  .t-java code { background: var(--java-wash); color: var(--java); }
+  .t-react code { background: var(--react-wash); color: var(--react); }
+  .t-note { color: var(--ink-soft); font-size: 0.86rem; }
+
+  /* ── callouts ─────────────────────────────── */
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--java);
+    padding: 1rem 1.15rem;
+    margin: 0 0 1.4rem;
+    border-radius: 0 4px 4px 0;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .lab {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--java);
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .trap { border-left-color: var(--warn); background: var(--warn-wash); }
+  .trap .lab { color: var(--warn); }
+
+  /* ── self-test ────────────────────────────── */
+  .quiz { display: flex; flex-direction: column; gap: 0; margin-bottom: 1.5rem; }
+  details {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.15rem 0;
+  }
+  details:first-child { border-top: 1px solid var(--rule); }
+  summary {
+    cursor: pointer;
+    padding: 0.7rem 0 0.7rem 1.55rem;
+    position: relative;
+    font-weight: 550;
+    list-style: none;
+    max-width: var(--measure);
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "+";
+    position: absolute;
+    left: 0;
+    top: 0.68rem;
+    font-family: var(--font-mono);
+    color: var(--react);
+    font-weight: 600;
+  }
+  details[open] summary::before { content: "\2013"; }
+  details[open] summary { color: var(--react); }
+  summary:hover { color: var(--react); }
+  .answer { padding: 0 0 0.9rem 1.55rem; }
+  .answer p:last-child, .answer pre:last-child { margin-bottom: 0; }
+  .answer p { font-size: 0.95rem; }
+
+  /* ── schedule ─────────────────────────────── */
+  .sched { display: flex; flex-direction: column; gap: 0; margin-bottom: 1.5rem; }
+  .sched-row {
+    display: grid;
+    grid-template-columns: 5.4rem 1fr;
+    gap: 1rem;
+    padding: 0.62rem 0;
+    border-bottom: 1px solid var(--rule);
+    align-items: baseline;
+  }
+  .sched-row:first-child { border-top: 1.5px solid var(--ink); }
+  .sched-row .t {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .sched-row .w { font-size: 0.95rem; }
+  .sched-row .w em { color: var(--ink-soft); font-style: normal; font-size: 0.88rem; display: block; }
+
+  /* ── app briefs ───────────────────────────── */
+  .brief {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+    margin-bottom: 1.1rem;
+    border-radius: 4px;
+  }
+  .brief h3 { margin-top: 0; }
+  .brief .meta {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--react);
+    margin-bottom: 0.35rem;
+  }
+  .brief ul { margin-bottom: 0; }
+  .brief p:last-child { margin-bottom: 0; }
+
+  .colophon {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--rule);
+    padding-top: 1.2rem;
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+  }
+
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--react);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+
+  /* ── theme toggle (standalone only — the artifact host provides its own) ── */
+  .theme-toggle {
+    position: fixed;
+    top: 0.9rem;
+    right: 0.9rem;
+    z-index: 50;
+    background: var(--surface);
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 0.34rem 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  .theme-toggle:hover { color: var(--react); border-color: var(--react); }
+
+  /* ── print: a study handout, answers revealed ── */
+  @media print {
+    .rail, .theme-toggle { display: none !important; }
+    .page { display: block; max-width: none; padding: 0; }
+    body { font-size: 10.5pt; }
+    .answer { display: block !important; }
+    summary::before { content: "" !important; }
+    summary { padding-left: 0; }
+    .answer { padding-left: 0; }
+    pre, .note, .brief, table, details { break-inside: avoid; page-break-inside: avoid; }
+    section { break-inside: auto; }
+    .block-head { break-after: avoid; page-break-after: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" id="themeToggle" type="button">Dark</button>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">Interview prep · Java backend → React</p>
+    <h1>One Day to React</h1>
+    <p class="standfirst">Ten hours, ordered by what actually gets asked. You don't have a React problem — you have a JavaScript problem. This plan front-loads the language and translates every concept back to Java.</p>
+  </header>
+
+  <nav class="rail" aria-label="Schedule">
+    <p>The day</p>
+    <ol>
+      <li><a href="#reality"><span class="h">read</span><span>Start here</span></a></li>
+      <li><a href="#bridge"><span class="h">30m</span><span>Java → React</span></a></li>
+      <li><a href="#js"><span class="h">0:00</span><span>JavaScript</span></a></li>
+      <li><a href="#markup"><span class="h">1:30</span><span>HTML &amp; CSS floor</span></a></li>
+      <li><a href="#react"><span class="h">2:00</span><span>React model</span></a></li>
+      <li><a href="#hooks"><span class="h">4:00</span><span>Hooks</span></a></li>
+      <li><a href="#build"><span class="h">6:00</span><span>Build it</span></a></li>
+      <li><a href="#lifecycle"><span class="h">8:00</span><span>Lifecycle<span class="pri">★★</span></span></a></li>
+      <li><a href="#hoc"><span class="h">8:30</span><span>HOCs</span></a></li>
+      <li><a href="#redux"><span class="h">9:00</span><span>Redux &amp; Zustand<span class="pri">★★</span></span></a></li>
+      <li><a href="#customhooks"><span class="h">9:45</span><span>Custom hooks</span></a></li>
+      <li><a href="#lazy"><span class="h">10:00</span><span>Lazy loading<span class="pri">★★★</span></span></a></li>
+      <li><a href="#fiber"><span class="h">10:30</span><span>VDOM &amp; Fiber</span></a></li>
+      <li><a href="#drills"><span class="h">11:00</span><span>Question drills</span></a></li>
+      <li><a href="#traps"><span class="h">11:45</span><span>Traps</span></a></li>
+      <li><a href="#saying"><span class="h">12:00</span><span>What to say</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- ─────────────── REALITY ─────────────── -->
+    <section id="reality">
+      <div class="block-head">
+        <span class="clock">Read first</span>
+        <h2>What one day can and can't buy you</h2>
+      </div>
+
+      <p>One day will not make you an experienced React developer, and the interviewer will know within five minutes if you pretend otherwise. What one focused day <em>can</em> do is make you a strong engineer who reasons correctly about React — which is a different and completely respectable thing to be.</p>
+
+      <p>Aim at this bar: you can explain why React re-renders, write a component with state and a form from a blank file, fetch data with loading and error states, and say "I haven't used that in production, but here's how I'd approach it" without flinching. For a backend developer moving over, that's a pass.</p>
+
+      <div class="note">
+        <span class="lab">Set up before you start</span>
+        <p>Don't burn an hour on tooling. Open <a href="https://codesandbox.io">codesandbox.io</a> or <a href="https://stackblitz.com">stackblitz.com</a>, pick the React template, and you're coding in thirty seconds. If you'd rather work locally: <code>npm create vite@latest my-app -- --template react</code>, then <code>cd my-app &amp;&amp; npm install &amp;&amp; npm run dev</code>.</p>
+      </div>
+
+      <h3>The schedule</h3>
+      <div class="sched">
+        <div class="sched-row"><span class="t">0:00–1:30</span><span class="w">JavaScript you actually need<em>Closures, array methods, destructuring, async. The highest-yield block on this page.</em></span></div>
+        <div class="sched-row"><span class="t">1:30–2:00</span><span class="w">HTML &amp; CSS floor<em>Just enough not to look lost. Flexbox is 90% of it.</em></span></div>
+        <div class="sched-row"><span class="t">2:00–4:00</span><span class="w">The React mental model<em>Components, JSX, props, state, lists, conditionals, events.</em></span></div>
+        <div class="sched-row"><span class="t">4:00–6:00</span><span class="w">All seven hooks<em>useState, useEffect, useContext, useReducer, useMemo, useCallback, useRef.</em></span></div>
+        <div class="sched-row"><span class="t">6:00–8:00</span><span class="w">Build it<em>Counter and todo list, typed by hand. This is where it becomes muscle memory.</em></span></div>
+        <div class="sched-row"><span class="t">8:00–11:00</span><span class="w">Deep dives<em>Lifecycle, HOCs, Redux/Zustand, custom hooks, lazy loading, Fiber. Your list.</em></span></div>
+        <div class="sched-row"><span class="t">11:00–11:45</span><span class="w">Question drills<em>Say the answers out loud. Out loud is not optional.</em></span></div>
+        <div class="sched-row"><span class="t">11:45–12:15</span><span class="w">Traps and closing strategy<em>The mistakes that specifically catch backend developers.</em></span></div>
+      </div>
+
+      <div class="note">
+        <span class="lab">Your topic list doesn't fit in ten hours</span>
+        <p>Done at the depth an interviewer will push to, the list runs about twelve hours. That's fine — it just means you choose, rather than running out of time at hour nine having half-learned everything. The deep dives are mostly <em>explain-it</em> topics rather than <em>build-it</em> topics, so they go faster than coding blocks.</p>
+        <p>If you have ten hours, cut in this order: <strong>the GitHub search app</strong> (its lessons are already in the todo app), then <strong>HOCs</strong> (lowest yield on your list — they're largely legacy), then compress the CSS block to fifteen minutes. Never cut the JavaScript block, the drills, or lazy loading.</p>
+      </div>
+
+      <p>Your own star markings drive the weighting below: lazy loading is treated as the top priority, with lifecycle and Redux just behind it.</p>
+    </section>
+
+    <!-- ─────────────── BRIDGE ─────────────── -->
+    <section id="bridge">
+      <div class="block-head">
+        <span class="clock">Your edge</span>
+        <h2>Everything you already know, renamed</h2>
+      </div>
+
+      <p>Three years of Java means the hard ideas are already installed — immutability, lifecycle, dependency injection, the difference between identity and equality. React mostly gives them new names. Read this table twice; it will do more for you than any tutorial.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th style="width:31%">Java</th><th style="width:33%">React / JavaScript</th><th>What carries over</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="t-java"><code>class UserCard</code> with a render method</td>
+              <td class="t-react"><code>function UserCard() {}</code> returning markup</td>
+              <td class="t-note">A component is just a function. Called on every render, top to bottom.</td>
+            </tr>
+            <tr>
+              <td class="t-java">Constructor params, <code>final</code> fields</td>
+              <td class="t-react"><code>props</code></td>
+              <td class="t-note">Read-only, passed in from the parent. Never assign to them.</td>
+            </tr>
+            <tr>
+              <td class="t-java">A private field whose setter fires a change event</td>
+              <td class="t-react"><code>useState</code></td>
+              <td class="t-note">Setting it schedules a re-render. That's the entire trick.</td>
+            </tr>
+            <tr>
+              <td class="t-java"><code>@PostConstruct</code> / <code>@PreDestroy</code></td>
+              <td class="t-react"><code>useEffect(fn, [])</code> + its return</td>
+              <td class="t-note">Runs after mount; the returned function is the teardown.</td>
+            </tr>
+            <tr>
+              <td class="t-java"><code>CompletableFuture&lt;T&gt;</code></td>
+              <td class="t-react"><code>Promise&lt;T&gt;</code></td>
+              <td class="t-note"><code>.thenApply</code> → <code>.then</code>. <code>await</code> reads like <code>.join()</code> but never blocks a thread.</td>
+            </tr>
+            <tr>
+              <td class="t-java"><code>list.stream().map().toList()</code></td>
+              <td class="t-react"><code>list.map(fn)</code></td>
+              <td class="t-note">Already returns a new array — no <code>collect</code> step.</td>
+            </tr>
+            <tr>
+              <td class="t-java"><code>Optional&lt;T&gt;</code> chaining</td>
+              <td class="t-react"><code>user?.address?.city ?? "n/a"</code></td>
+              <td class="t-note">Optional chaining plus a nullish default.</td>
+            </tr>
+            <tr>
+              <td class="t-java"><code>equals</code>/<code>hashCode</code> for identity</td>
+              <td class="t-react">the <code>key</code> prop</td>
+              <td class="t-note">How React matches list items between renders.</td>
+            </tr>
+            <tr>
+              <td class="t-java">Immutable records, wither methods</td>
+              <td class="t-react"><code>{ ...user, age: 31 }</code></td>
+              <td class="t-note">React compares by reference, so you must produce a new object.</td>
+            </tr>
+            <tr>
+              <td class="t-java">Anonymous inner class capturing a local</td>
+              <td class="t-react">a closure</td>
+              <td class="t-note">Same mechanism. This is why "stale closure" bugs exist.</td>
+            </tr>
+            <tr>
+              <td class="t-java"><code>pom.xml</code>, <code>mvn install</code></td>
+              <td class="t-react"><code>package.json</code>, <code>npm install</code></td>
+              <td class="t-note"><code>node_modules</code> is your <code>~/.m2</code>.</td>
+            </tr>
+            <tr>
+              <td class="t-java">Spring DI / <code>@Autowired</code></td>
+              <td class="t-react">props, or Context for cross-cutting values</td>
+              <td class="t-note">Context is closer to a request-scoped bean than to a singleton registry.</td>
+            </tr>
+            <tr>
+              <td class="t-java">Thread pool, parallel streams</td>
+              <td class="t-react">one single-threaded event loop</td>
+              <td class="t-note">No parallelism in the browser. Blocking the loop freezes the UI.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <span class="lab">Say this in the interview</span>
+        <p>When they ask why you're moving to frontend, the honest framing lands well: "The mental models transfer — immutable updates, lifecycle, thinking in terms of state transitions. What I've had to learn is JavaScript's runtime model and React's rendering rules." That's a sentence a senior engineer says, not a bootcamp graduate.</p>
+      </div>
+    </section>
+
+    <!-- ─────────────── JS ─────────────── -->
+    <section id="js">
+      <div class="block-head">
+        <span class="clock">0:00 – 1:30</span>
+        <h2>The JavaScript you actually need</h2>
+      </div>
+
+      <p>Skip the language tour. These seven things appear in essentially every React file, and gaps here are what interviewers actually detect.</p>
+
+      <h4>1 · Destructuring</h4>
+      <pre><code><span class="c">// pull fields out by name — you'll see this in every component signature</span>
+const { name, age } = user;
+const [first, ...rest] = [1, 2, 3];      <span class="c">// first = 1, rest = [2, 3]</span>
+
+<span class="c">// with a default, and renamed</span>
+const { city = "unknown", zip: postcode } = address;</code></pre>
+
+      <h4>2 · Spread — how you "copy with changes"</h4>
+      <pre><code>const updated  = { ...user, age: 31 };        <span class="c">// new object, one field changed</span>
+const appended = [...items, newItem];         <span class="c">// new array, one item added</span>
+const removed  = items.filter(i =&gt; i.id !== 7);
+
+<span class="c">// spread is SHALLOW — nested objects are still shared references</span>
+const bad  = { ...order };                    <span class="c">// order.lines is the same array!</span>
+const good = { ...order, lines: [...order.lines] };</code></pre>
+
+      <h4>3 · Array methods — your Stream API</h4>
+      <pre><code>users.map(u =&gt; u.name);                       <span class="c">// stream().map().toList()</span>
+users.filter(u =&gt; u.age &gt;= 18);               <span class="c">// stream().filter()</span>
+users.reduce((sum, u) =&gt; sum + u.age, 0);     <span class="c">// stream().reduce()</span>
+users.find(u =&gt; u.id === 3);                  <span class="c">// findFirst().orElse(undefined)</span>
+users.some(u =&gt; u.admin);                     <span class="c">// anyMatch</span>
+users.every(u =&gt; u.active);                   <span class="c">// allMatch</span>
+
+<span class="c">// these MUTATE — never use them on React state</span>
+items.push(x); items.sort(); items.splice(0, 1);</code></pre>
+
+      <h4>4 · Arrow functions</h4>
+      <pre><code>const double = n =&gt; n * 2;
+const add = (a, b) =&gt; a + b;
+const makeUser = name =&gt; ({ name });          <span class="c">// parens to return an object literal</span></code></pre>
+      <p>Arrows have no <code>this</code> of their own — they borrow it from the surrounding scope. That's precisely why React code uses them everywhere and why old class components needed <code>.bind(this)</code>.</p>
+
+      <h4>5 · Closures — the one to really understand</h4>
+      <pre><code>function makeCounter() {
+  let count = 0;                <span class="c">// captured by the returned function</span>
+  return () =&gt; ++count;         <span class="c">// still alive after makeCounter returns</span>
+}
+const next = makeCounter();
+next();  <span class="c">// 1</span>
+next();  <span class="c">// 2</span></code></pre>
+      <p>This is your anonymous inner class capturing an effectively-final local — except JavaScript lets the captured variable change. Every React event handler is a closure over that render's props and state, which is the single most important sentence on this page.</p>
+
+      <h4>6 · Truthiness and equality</h4>
+      <pre><code><span class="c">// falsy values, all of them:</span>
+false, 0, -0, 0n, "", null, undefined, NaN
+<span class="c">// everything else is truthy — including [] and {} </span>
+
+1 == "1"     <span class="c">// true  — type coercion</span>
+1 === "1"    <span class="c">// false — use === always, no exceptions</span>
+
+null ?? "d"        <span class="c">// "d"  — only null/undefined trigger ??</span>
+0 ?? "d"           <span class="c">// 0</span>
+0 || "d"           <span class="c">// "d"  — || also catches 0 and "", often a bug</span></code></pre>
+
+      <h4>7 · Promises and async/await</h4>
+      <pre><code>async function loadUsers() {
+  const res = await fetch("/api/users");
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);   <span class="c">// fetch does NOT throw on 404/500</span>
+  return res.json();
+}
+
+<span class="c">// an async function always returns a Promise</span>
+loadUsers()
+  .then(users =&gt; console.log(users))
+  .catch(err =&gt; console.error(err));
+
+<span class="c">// run in parallel, not one after the other</span>
+const [users, orders] = await Promise.all([loadUsers(), loadOrders()]);</code></pre>
+
+      <div class="note trap">
+        <span class="lab">Interviewers probe this</span>
+        <p><code>fetch</code> only rejects on a network failure. A 404 or a 500 resolves normally with <code>res.ok === false</code>. Forgetting the <code>res.ok</code> check is the most common mistake in a live-coding fetch, and a good interviewer is watching for it.</p>
+      </div>
+    </section>
+
+    <!-- ─────────────── MARKUP ─────────────── -->
+    <section id="markup">
+      <div class="block-head">
+        <span class="clock">1:30 – 2:00</span>
+        <h2>The HTML and CSS floor</h2>
+      </div>
+
+      <p>You will not be asked to build a pixel-perfect design. You need enough not to stall. Thirty minutes, then move on.</p>
+
+      <h4>HTML worth knowing</h4>
+      <p>Structural elements carry meaning that screen readers and interviewers both notice: <code>header</code>, <code>nav</code>, <code>main</code>, <code>section</code>, <code>article</code>, <code>footer</code>, <code>button</code>, <code>form</code>, <code>label</code>, <code>input</code>, <code>ul</code>/<code>li</code>, <code>table</code>. Use <code>div</code> and <code>span</code> only when nothing more specific fits. Always pair a <code>label</code> with its input — it's a five-second accessibility win people notice.</p>
+
+      <h4>CSS: the box model</h4>
+      <p>Every element is a box: content, then <code>padding</code>, then <code>border</code>, then <code>margin</code>. If you remember one CSS rule, remember <code>box-sizing: border-box</code> — it makes <code>width</code> include padding and border, which is what you intuitively expect.</p>
+
+      <h4>Flexbox — genuinely 90% of layout</h4>
+      <pre><code>.row {
+  display: flex;
+  gap: 1rem;                    <span class="c">/* spacing between children */</span>
+  justify-content: space-between;   <span class="c">/* along the main axis */</span>
+  align-items: center;              <span class="c">/* across the main axis */</span>
+  flex-wrap: wrap;
+}
+.column { display: flex; flex-direction: column; gap: 0.5rem; }
+.grow   { flex: 1; }              <span class="c">/* takes the leftover space */</span></code></pre>
+
+      <p>Specificity, briefly: inline style beats <code>#id</code> beats <code>.class</code> beats <code>tag</code>. If someone asks how you'd style a React app, the honest and current answer is "CSS modules or a utility framework like Tailwind, so styles are scoped to the component rather than global."</p>
+    </section>
+
+    <!-- ─────────────── REACT ─────────────── -->
+    <section id="react">
+      <div class="block-head">
+        <span class="clock">2:00 – 4:00</span>
+        <h2>The React mental model</h2>
+      </div>
+
+      <p>One idea underpins everything else: <strong>your component is a function of its props and state, and React calls it again whenever either changes.</strong> You never touch the DOM. You describe what the screen should look like for the current data, and React works out the minimum set of DOM edits to get there.</p>
+
+      <h3>Components and JSX</h3>
+      <pre><code>function Greeting({ name, children }) {
+  return (
+    &lt;div className="card"&gt;
+      &lt;h2&gt;Hello, {name}&lt;/h2&gt;
+      {children}
+    &lt;/div&gt;
+  );
+}
+
+<span class="c">// used as a tag — capital letter is required for a component</span>
+&lt;Greeting name="Ravi"&gt;&lt;p&gt;Welcome back.&lt;/p&gt;&lt;/Greeting&gt;</code></pre>
+
+      <p>JSX is not HTML — it compiles to function calls. The rules that trip people up:</p>
+      <ul>
+        <li><code>className</code> not <code>class</code>; <code>htmlFor</code> not <code>for</code> (both are reserved words in JavaScript).</li>
+        <li>Attributes are camelCase: <code>onClick</code>, <code>onChange</code>, <code>tabIndex</code>.</li>
+        <li>Curly braces take an <strong>expression</strong>, not a statement. A ternary works; an <code>if</code> does not.</li>
+        <li>You must return exactly one root node. Wrap siblings in a fragment: <code>&lt;&gt;...&lt;/&gt;</code>.</li>
+        <li>Every tag closes, including <code>&lt;br /&gt;</code> and <code>&lt;img /&gt;</code>.</li>
+      </ul>
+
+      <h3>Props flow down, events flow up</h3>
+      <pre><code>function Parent() {
+  const [count, setCount] = useState(0);
+  return &lt;Child value={count} onIncrement={() =&gt; setCount(c =&gt; c + 1)} /&gt;;
+}
+
+function Child({ value, onIncrement }) {
+  return &lt;button onClick={onIncrement}&gt;{value}&lt;/button&gt;;
+}</code></pre>
+      <p>A child can never write to its parent's state. It calls a function the parent handed it. When two siblings need the same data, you move that state up to their nearest common parent — that's <strong>lifting state up</strong>, and it's a phrase worth using by name.</p>
+
+      <h3>State</h3>
+      <pre><code>function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    &lt;&gt;
+      &lt;p&gt;{count}&lt;/p&gt;
+      &lt;button onClick={() =&gt; setCount(count + 1)}&gt;+1&lt;/button&gt;
+      &lt;button onClick={() =&gt; setCount(c =&gt; c + 1)}&gt;+1 (safe)&lt;/button&gt;
+    &lt;/&gt;
+  );
+}</code></pre>
+      <p>Calling <code>setCount</code> does not change <code>count</code> in the current render — <code>count</code> is a <code>const</code> captured by this render's closure. It schedules a re-render, and the function runs again from the top with a fresh value. Use the updater form <code>setCount(c =&gt; c + 1)</code> whenever the next value depends on the previous one, because React batches updates.</p>
+
+      <div class="note trap">
+        <span class="lab">The classic demonstration</span>
+        <pre style="margin-bottom:0;background:transparent;border:none;padding:0"><code>setCount(count + 1);
+setCount(count + 1);   <span class="c">// with count = 0, ends at 1 — both read the same stale value</span>
+
+setCount(c =&gt; c + 1);
+setCount(c =&gt; c + 1);  <span class="c">// ends at 2 — each receives the latest</span></code></pre>
+      </div>
+
+      <h3>Rendering lists</h3>
+      <pre><code>&lt;ul&gt;
+  {users.map(u =&gt; (
+    &lt;li key={u.id}&gt;{u.name}&lt;/li&gt;
+  ))}
+&lt;/ul&gt;</code></pre>
+      <p><code>key</code> is how React matches elements between two renders — it's the <code>equals</code>/<code>hashCode</code> of reconciliation. Use a stable id from your data. Using the array index looks fine until the list reorders or you insert at the front, at which point React reuses the wrong DOM node and component state attaches to the wrong row. That's a real bug, and it's a favourite interview question.</p>
+
+      <h3>Conditional rendering</h3>
+      <pre><code>{isLoading && &lt;Spinner /&gt;}
+{error ? &lt;ErrorBox message={error} /&gt; : &lt;List items={items} /&gt;}
+{items.length === 0 && &lt;p&gt;Nothing here yet.&lt;/p&gt;}</code></pre>
+      <div class="note trap">
+        <span class="lab">Trap</span>
+        <p><code>{items.length && &lt;List /&gt;}</code> renders a literal <strong>0</strong> on the page when the array is empty, because <code>0</code> is falsy but still a valid React child. Always compare explicitly: <code>items.length &gt; 0 && ...</code>.</p>
+      </div>
+
+      <h3>Forms — controlled inputs</h3>
+      <pre><code>function LoginForm() {
+  const [email, setEmail] = useState("");
+
+  function handleSubmit(e) {
+    e.preventDefault();          <span class="c">// stop the browser's full page reload</span>
+    console.log(email);
+  }
+
+  return (
+    &lt;form onSubmit={handleSubmit}&gt;
+      &lt;label htmlFor="email"&gt;Email&lt;/label&gt;
+      &lt;input
+        id="email"
+        value={email}
+        onChange={e =&gt; setEmail(e.target.value)}
+      /&gt;
+      &lt;button type="submit"&gt;Sign in&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}</code></pre>
+      <p><strong>Controlled</strong> means React state is the single source of truth — the input displays <code>value</code> and reports changes upward. <strong>Uncontrolled</strong> means the DOM keeps the value and you read it with a ref when you need it. Controlled is the default answer; uncontrolled is for file inputs and integrating non-React widgets.</p>
+    </section>
+
+    <!-- ─────────────── HOOKS ─────────────── -->
+    <section id="hooks">
+      <div class="block-head">
+        <span class="clock">4:00 – 6:00</span>
+        <h2>Hooks</h2>
+      </div>
+
+      <p>Two rules, and interviewers do ask for them: call hooks only at the top level of a component (never inside a condition, loop, or nested function), and only from a component or another hook. React tracks hooks by call order, so a conditional hook shifts the whole list and corrupts state.</p>
+
+      <h3>useEffect</h3>
+      <p>It's for <em>synchronising with something outside React</em> — a network request, a subscription, a timer, the document title. Not for computing values from props.</p>
+      <pre><code>useEffect(() =&gt; {
+  const id = setInterval(() =&gt; tick(), 1000);
+  return () =&gt; clearInterval(id);        <span class="c">// cleanup: on unmount, and before each re-run</span>
+}, []);                                   <span class="c">// dependency array</span></code></pre>
+      <p>The dependency array is the whole game:</p>
+      <ul>
+        <li><strong>omitted</strong> — runs after every single render (rarely what you want)</li>
+        <li><strong><code>[]</code></strong> — runs once after mount, cleanup on unmount</li>
+        <li><strong><code>[a, b]</code></strong> — runs whenever <code>a</code> or <code>b</code> changes, compared by reference (<code>Object.is</code>)</li>
+      </ul>
+
+      <div class="note trap">
+        <span class="lab">The infinite loop</span>
+        <p>Because dependencies are compared <em>by reference</em>, an object or array literal in the array is a brand-new value every render — the effect re-runs, sets state, re-renders, and loops forever. Same for a function defined in the component body. Depend on primitives (<code>user.id</code>, not <code>user</code>), or wrap the value in <code>useMemo</code>/<code>useCallback</code>.</p>
+      </div>
+
+      <h3>Fetching data — know this one cold</h3>
+      <p>Almost every live-coding round is some version of this. Type it until you can produce it from memory.</p>
+      <pre><code>function UserList() {
+  const [users, setUsers]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+
+  useEffect(() =&gt; {
+    let cancelled = false;                    <span class="c">// guard against a late response</span>
+
+    async function load() {                   <span class="c">// the effect fn itself can't be async</span>
+      try {
+        const res = await fetch("/api/users");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setUsers(data);
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+
+    return () =&gt; { cancelled = true; };       <span class="c">// cleanup on unmount</span>
+  }, []);
+
+  if (loading) return &lt;p&gt;Loading…&lt;/p&gt;;
+  if (error)   return &lt;p role="alert"&gt;Couldn't load users: {error}&lt;/p&gt;;
+
+  return (
+    &lt;ul&gt;
+      {users.map(u =&gt; &lt;li key={u.id}&gt;{u.name}&lt;/li&gt;)}
+    &lt;/ul&gt;
+  );
+}</code></pre>
+      <p>Two details that earn credit: the effect callback can't be <code>async</code> (it must return a cleanup function, not a Promise), and the <code>cancelled</code> flag prevents setting state after unmount when a slow response lands late.</p>
+
+      <h3>useReducer</h3>
+      <p>The hook that will feel most familiar to you, because it's a pure function you'd be happy to unit-test: <code>(state, action) =&gt; newState</code>. Same signature as a fold, or an event-sourced aggregate's apply method.</p>
+      <pre><code>const initial = { count: 0, step: 1 };
+
+function reducer(state, action) {          <span class="c">// pure — no I/O, no side effects</span>
+  switch (action.type) {
+    case "increment": return { ...state, count: state.count + state.step };
+    case "setStep":   return { ...state, step: action.payload };
+    case "reset":     return initial;
+    default: throw new Error(`Unknown action: ${action.type}`);
+  }
+}
+
+function Counter() {
+  const [state, dispatch] = useReducer(reducer, initial);
+
+  return (
+    &lt;&gt;
+      &lt;p&gt;{state.count}&lt;/p&gt;
+      &lt;button onClick={() =&gt; dispatch({ type: "increment" })}&gt;+{state.step}&lt;/button&gt;
+      &lt;button onClick={() =&gt; dispatch({ type: "setStep", payload: 5 })}&gt;step 5&lt;/button&gt;
+    &lt;/&gt;
+  );
+}</code></pre>
+      <p><strong>When to prefer it over <code>useState</code>:</strong> several fields that change together, transitions where the next state depends on the previous one, or the same update logic fired from many places. The practical tell is a component with five <code>useState</code> calls that always change in pairs.</p>
+      <p>The argument that lands best in an interview is testability: the reducer is a plain function outside the component, so you can test every transition without rendering anything. That's the same reason you'd pull business logic out of a Spring controller.</p>
+
+      <h3>useRef</h3>
+      <pre><code>const inputRef = useRef(null);
+&lt;input ref={inputRef} /&gt;
+inputRef.current.focus();
+
+<span class="c">// also: a mutable box that survives renders WITHOUT triggering one</span>
+const renderCount = useRef(0);
+renderCount.current++;</code></pre>
+      <p>Think of it as an instance field that isn't part of the render output. Changing <code>.current</code> never causes a re-render — that's the entire difference from state.</p>
+
+      <h3>useMemo and useCallback</h3>
+      <pre><code>const sorted = useMemo(
+  () =&gt; [...items].sort((a, b) =&gt; a.price - b.price),
+  [items]
+);                                     <span class="c">// caches a computed VALUE</span>
+
+const handleSelect = useCallback(
+  id =&gt; setSelected(id),
+  []
+);                                     <span class="c">// caches a FUNCTION's identity</span></code></pre>
+      <p>Both are optimisations, not correctness tools. The honest interview answer is: "I'd reach for them when profiling shows an expensive computation re-running, or when a stable function identity is needed to keep a memoised child from re-rendering. Sprinkling them everywhere adds cost and noise." That answer is better than an enthusiastic one.</p>
+
+      <h3>Custom hooks</h3>
+      <p>Any function starting with <code>use</code> that calls other hooks. It's how you share stateful logic — the composition story that replaced class inheritance.</p>
+      <pre><code>function useDebounced(value, ms = 300) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() =&gt; {
+    const t = setTimeout(() =&gt; setDebounced(value), ms);
+    return () =&gt; clearTimeout(t);       <span class="c">// cancel if value changes first</span>
+  }, [value, ms]);
+
+  return debounced;
+}
+
+<span class="c">// in a component:</span>
+const [query, setQuery] = useState("");
+const debouncedQuery = useDebounced(query, 400);</code></pre>
+
+      <h3>Context — in one minute</h3>
+      <pre><code>const ThemeContext = createContext("light");
+
+&lt;ThemeContext.Provider value="dark"&gt;
+  &lt;App /&gt;
+&lt;/ThemeContext.Provider&gt;
+
+<span class="c">// anywhere below, at any depth:</span>
+const theme = useContext(ThemeContext);</code></pre>
+      <p>It solves <strong>prop drilling</strong> — threading a value through five components that don't care about it. Use it for genuinely global things: theme, current user, locale. It is not a state manager, and every consumer re-renders when the value changes.</p>
+    </section>
+
+    <!-- ─────────────── BUILD ─────────────── -->
+    <section id="build">
+      <div class="block-head">
+        <span class="clock">6:00 – 8:00</span>
+        <h2>Build these, by hand</h2>
+      </div>
+
+      <p>This block matters more than all the reading above it. Type every character — no copy-paste, no autocomplete-driven guessing. The goal is that your fingers know <code>const [x, setX] = useState()</code> before your brain does, because in a live-coding round your brain will be busy being nervous.</p>
+
+      <div class="brief">
+        <p class="meta">App one · 15 minutes</p>
+        <h3>Counter</h3>
+        <p>Increment, decrement, reset. Then add a rule: it can't go below zero.</p>
+        <p><strong>Proves:</strong> <code>useState</code>, event handlers, the updater form, conditional disabling of a button.</p>
+      </div>
+
+      <div class="brief">
+        <p class="meta">App two · 60 minutes</p>
+        <h3>Todo list</h3>
+        <ul>
+          <li>A controlled text input plus an Add button</li>
+          <li>Each item can be toggled complete and deleted</li>
+          <li>Filter tabs: All / Active / Completed</li>
+          <li>A live count of what's left</li>
+        </ul>
+        <p><strong>Proves:</strong> lists and keys, immutable array updates, controlled inputs, lifting state up, derived state. Derive the filtered list during render — don't store it in another <code>useState</code>. Interviewers watch for exactly that.</p>
+        <pre style="margin-top:0.9rem;margin-bottom:0"><code><span class="c">// the three updates you'll need — all immutable</span>
+setTodos([...todos, { id: crypto.randomUUID(), text, done: false }]);
+setTodos(todos.map(t =&gt; t.id === id ? { ...t, done: !t.done } : t));
+setTodos(todos.filter(t =&gt; t.id !== id));
+
+<span class="c">// derived, not stored</span>
+const visible = todos.filter(t =&gt;
+  filter === "active" ? !t.done : filter === "done" ? t.done : true
+);</code></pre>
+      </div>
+
+      <div class="brief">
+        <p class="meta">App three · 60 minutes · cut this first if short on time</p>
+        <h3>GitHub user search</h3>
+        <p>A search box that hits <code>https://api.github.com/search/users?q=…</code> and renders the results, with the query debounced by 400 ms, plus loading and error states.</p>
+        <p><strong>Proves:</strong> <code>useEffect</code> with a dependency, cleanup, a custom hook, async data with all three states handled. This is the single most representative React interview exercise there is.</p>
+      </div>
+
+      <p>If you finish early, add one thing to the todo app: persist to <code>localStorage</code> with a <code>useEffect</code>. It's a natural follow-up question and takes four lines.</p>
+    </section>
+
+    <!-- ─────────────── LIFECYCLE ─────────────── -->
+    <section id="lifecycle">
+      <div class="block-head">
+        <span class="clock">8:00 – 8:30</span>
+        <h2>Lifecycle: the three phases <span class="pri">★★</span></h2>
+      </div>
+
+      <p>This question is almost always phrased in class-component vocabulary even at shops that write nothing but hooks, because it's an old question that stuck. Answer it in both dialects and you look like you know the history rather than just the current API.</p>
+
+      <h4>Mounting — the component enters the DOM</h4>
+      <p><code>constructor</code> → <code>render</code> → DOM updated → <code>componentDidMount</code>. This is where you kick off the first fetch, set up a subscription, or start a timer.</p>
+
+      <h4>Updating — props or state changed</h4>
+      <p><code>render</code> → DOM reconciled → <code>componentDidUpdate(prevProps, prevState)</code>. React re-runs the render and applies the diff. Guard your work here by comparing against the previous values, or you'll loop.</p>
+
+      <h4>Unmounting — the component leaves</h4>
+      <p><code>componentWillUnmount</code>. Cancel timers, close sockets, abort in-flight requests. Skipping this is how you get memory leaks and "can't update state on an unmounted component" warnings.</p>
+
+      <h3>The mapping to hooks</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th style="width:40%">Class method</th><th>Hook equivalent</th></tr></thead>
+          <tbody>
+            <tr><td class="t-java"><code>componentDidMount</code></td><td class="t-react"><code>useEffect(fn, [])</code></td></tr>
+            <tr><td class="t-java"><code>componentDidUpdate</code></td><td class="t-react"><code>useEffect(fn, [deps])</code></td></tr>
+            <tr><td class="t-java"><code>componentWillUnmount</code></td><td class="t-react">the function returned from <code>useEffect</code></td></tr>
+            <tr><td class="t-java"><code>shouldComponentUpdate</code></td><td class="t-react"><code>React.memo(Component)</code></td></tr>
+            <tr><td class="t-java"><code>getDerivedStateFromProps</code></td><td class="t-react">just compute it during render — no hook needed</td></tr>
+            <tr><td class="t-java"><code>componentDidCatch</code></td><td class="t-react"><strong>no hook exists</strong> — error boundaries are still class-only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>That last row is worth saying out loud unprompted. Error boundaries remain the one thing you cannot write with hooks; in practice people use the <code>react-error-boundary</code> package rather than hand-writing the class. Knowing the exception signals you've actually worked with the API rather than skimmed a table.</p>
+
+      <pre><code><span class="c">// one effect can express mount + update + unmount together</span>
+useEffect(() =&gt; {
+  const socket = connect(roomId);            <span class="c">// runs on mount, and on every roomId change</span>
+  return () =&gt; socket.close();               <span class="c">// runs before each re-run, and on unmount</span>
+}, [roomId]);</code></pre>
+
+      <div class="note trap">
+        <span class="lab">React 18 detail worth knowing</span>
+        <p>In development, <code>&lt;StrictMode&gt;</code> deliberately mounts, unmounts, and remounts every component once — so your effects run <strong>twice</strong> and you may see two fetches. That's not a bug: it's React surfacing effects that lack proper cleanup. It doesn't happen in production. Candidates who panic about the double fetch reveal they've never read the docs; mentioning it calmly is a small, real credibility win.</p>
+      </div>
+    </section>
+
+    <!-- ─────────────── HOC ─────────────── -->
+    <section id="hoc">
+      <div class="block-head">
+        <span class="clock">8:30 – 9:00</span>
+        <h2>Higher Order Components</h2>
+      </div>
+
+      <p>Your notebook asks what, why, when, how — so in that order.</p>
+
+      <h4>What</h4>
+      <p>A function that takes a component and returns a new, enhanced component. It is not a React feature; it's just a pattern falling out of the fact that components are values. The closest thing you know is a decorator or a Spring AOP around-advice: wrap the target, add behaviour, delegate.</p>
+
+      <h4>How</h4>
+      <pre><code>function withAuth(Wrapped) {
+  return function Guarded(props) {
+    const user = useContext(AuthContext);
+
+    if (!user) return &lt;LoginPrompt /&gt;;
+    return &lt;Wrapped {...props} user={user} /&gt;;    <span class="c">// pass everything through, plus extras</span>
+  };
+}
+
+const ProtectedDashboard = withAuth(Dashboard);</code></pre>
+
+      <h4>Why they existed</h4>
+      <p>Before hooks there was no way to share <em>stateful</em> logic between components. If ten screens needed auth-checking or analytics or data-subscription, an HOC was how you avoided writing it ten times. The alternative pattern of the era was render props — same goal, different shape.</p>
+
+      <h4>When you'd use one today</h4>
+      <p>Rarely. Custom hooks replaced almost every HOC use case, with less indirection and no wrapper components cluttering the tree. You still meet them in library APIs — <code>connect()</code> from react-redux, <code>withRouter</code>, <code>withTranslation</code> — and in older codebases.</p>
+      <p>The answer that lands: <em>"I'd reach for a custom hook first. HOCs solve the same problem but they nest components, so you get wrapper hell in DevTools and props can silently collide. I'd expect to read them in legacy code more than write new ones."</em></p>
+
+      <div class="note">
+        <span class="lab">The gotchas, if they push</span>
+        <p>Prop name collisions between the HOC's injected props and the caller's. Static methods aren't copied to the wrapper unless you hoist them. Refs don't pass through without <code>forwardRef</code>. And set a <code>displayName</code>, or DevTools shows a tree full of anonymous wrappers.</p>
+      </div>
+    </section>
+
+    <!-- ─────────────── REDUX ─────────────── -->
+    <section id="redux">
+      <div class="block-head">
+        <span class="clock">9:00 – 9:45</span>
+        <h2>Redux, RTK and Zustand <span class="pri">★★</span></h2>
+      </div>
+
+      <p>You have an unusually good intuition for this one already. Redux is an event-sourced aggregate: actions are events, the reducer is the pure apply function, the store is the aggregate root holding current state. If you've ever built an event-sourced service, you've built Redux.</p>
+
+      <h4>Why it exists</h4>
+      <p>When state is needed by components far apart in the tree, passing it through props is unworkable and Context re-renders everything that consumes it. Redux gives one predictable store, updates that can only happen through explicit dispatched actions, and — because every change is a described event — a traceable history you can log, replay, or time-travel through.</p>
+
+      <h4>How the cycle works</h4>
+      <p><code>dispatch(action)</code> → the reducer computes a new state from the old state plus the action → subscribed components re-render. The reducer is pure: no fetching, no randomness, no mutation. Side effects live in middleware (thunks, sagas), which is the layer that made async work fit into a synchronous model.</p>
+
+      <h4>Redux Toolkit — what people actually write now</h4>
+      <p>Plain Redux was notorious for boilerplate: action type constants, action creators, switch statements, hand-written immutable updates. RTK is the official answer and is now the default; if you say "Redux" in an interview, assume they mean RTK.</p>
+      <pre><code>import { createSlice, configureStore } from "@reduxjs/toolkit";
+
+const counterSlice = createSlice({
+  name: "counter",
+  initialState: { value: 0 },
+  reducers: {
+    increment: (state) =&gt; { state.value += 1; },        <span class="c">// looks like mutation…</span>
+    addBy:     (state, action) =&gt; { state.value += action.payload; },
+  },
+});
+
+export const { increment, addBy } = counterSlice.actions;   <span class="c">// generated for you</span>
+
+export const store = configureStore({
+  reducer: { counter: counterSlice.reducer },
+});</code></pre>
+      <pre><code><span class="c">// in a component</span>
+const value = useSelector(state =&gt; state.counter.value);   <span class="c">// subscribe narrowly</span>
+const dispatch = useDispatch();
+
+&lt;button onClick={() =&gt; dispatch(addBy(5))}&gt;+5&lt;/button&gt;</code></pre>
+
+      <div class="note trap">
+        <span class="lab">The question they'll ask about that code</span>
+        <p>"You said reducers must be pure and state immutable — why does <code>state.value += 1</code> work?" Because RTK runs your reducer through <strong>Immer</strong>. You're mutating a draft proxy, and Immer produces a genuinely new immutable state from the changes you recorded. Outside <code>createSlice</code>, that same line would be a real bug. Knowing this distinction is a strong signal.</p>
+      </div>
+
+      <h4>Zustand — the minimal alternative</h4>
+      <pre><code>import { create } from "zustand";
+
+const useCounter = create((set) =&gt; ({
+  count: 0,
+  increment: () =&gt; set((s) =&gt; ({ count: s.count + 1 })),
+}));
+
+<span class="c">// in a component — no Provider, no dispatch, no action types</span>
+const count = useCounter((s) =&gt; s.count);
+const increment = useCounter((s) =&gt; s.increment);</code></pre>
+      <p>The store is just a hook. No provider wrapping your app, no action constants, no middleware ceremony. The trade-off is exactly what you'd expect: less structure means less traceability, which matters more on a twelve-person team than a three-person one.</p>
+
+      <h4>When <em>not</em> to reach for any of it</h4>
+      <p>This is the part that separates a considered answer from a memorised one. Most application state is <strong>server state</strong> — data that lives in your database and is cached in the browser. That belongs in TanStack Query or RTK Query, which handle caching, deduplication, retries and refetching. Putting server data in Redux by hand means rebuilding all of that badly.</p>
+      <p>A good closing line: <em>"I'd start with local <code>useState</code>, lift it when siblings need it, use Context for genuinely global values like theme or current user, and reach for Redux Toolkit or Zustand only when there's real client-side state shared across distant parts of the app. Server data goes to a query library either way."</em></p>
+    </section>
+
+    <!-- ─────────────── CUSTOM HOOKS ─────────────── -->
+    <section id="customhooks">
+      <div class="block-head">
+        <span class="clock">9:45 – 10:00</span>
+        <h2>Custom hooks, with code</h2>
+      </div>
+
+      <p>A custom hook is any function whose name starts with <code>use</code> and which calls other hooks. That naming isn't decoration — it's how the linter knows to enforce the rules of hooks inside it.</p>
+
+      <div class="note">
+        <span class="lab">The misconception interviewers probe</span>
+        <p>Custom hooks share <strong>logic</strong>, not <strong>state</strong>. Two components calling <code>useCounter()</code> each get their own independent count. If you need them to share one value, that's Context or a store — not a hook. Getting this wrong is the single most common misunderstanding, so being crisp about it stands out.</p>
+      </div>
+
+      <h4>When to extract one</h4>
+      <p>When the same <code>useState</code>-plus-<code>useEffect</code> pairing shows up in a second component, or when a component's body has grown a chunk of logic that has nothing to do with what it renders. Same instinct as pulling a private method out of a fat service class.</p>
+
+      <pre><code><span class="c">// persist a value to localStorage — reads once, writes on change</span>
+function useLocalStorage(key, initialValue) {
+  const [value, setValue] = useState(() =&gt; {
+    const stored = localStorage.getItem(key);        <span class="c">// lazy initialiser: runs once</span>
+    return stored ? JSON.parse(stored) : initialValue;
+  });
+
+  useEffect(() =&gt; {
+    localStorage.setItem(key, JSON.stringify(value));
+  }, [key, value]);
+
+  return [value, setValue];                          <span class="c">// same shape as useState</span>
+}</code></pre>
+
+      <pre><code><span class="c">// the whole fetch pattern, extracted once and reused everywhere</span>
+function useFetch(url) {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+
+  useEffect(() =&gt; {
+    const controller = new AbortController();        <span class="c">// cancel the real request</span>
+    setLoading(true);
+
+    fetch(url, { signal: controller.signal })
+      .then(res =&gt; {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(setData)
+      .catch(e =&gt; { if (e.name !== "AbortError") setError(e.message); })
+      .finally(() =&gt; setLoading(false));
+
+    return () =&gt; controller.abort();
+  }, [url]);
+
+  return { data, loading, error };
+}
+
+<span class="c">// every consumer is now three lines</span>
+const { data, loading, error } = useFetch("/api/users");</code></pre>
+
+      <p>Two details to point at while writing this: the lazy initialiser form of <code>useState</code> (passing a function so the expensive read runs once, not every render), and <code>AbortController</code>, which genuinely cancels the network request rather than just ignoring the response.</p>
+    </section>
+
+    <!-- ─────────────── LAZY ─────────────── -->
+    <section id="lazy">
+      <div class="block-head">
+        <span class="clock">10:00 – 10:30</span>
+        <h2>Lazy loading and code splitting <span class="pri">★★★</span></h2>
+      </div>
+
+      <p>You marked this highest, and it's a good instinct — it's the topic where a candidate can most easily show they think about users rather than just syntax.</p>
+
+      <h4>The problem</h4>
+      <p>By default a bundler concatenates your entire application into one JavaScript file. A user who lands on the login page downloads, parses, and executes the admin dashboard, the charting library, and the rich text editor before they can type their password. On a mid-range phone that's the difference between a one-second and an eight-second start.</p>
+
+      <h4>Code splitting, chunking, lazy loading — how the three relate</h4>
+      <p>They're three views of one mechanism, and being able to separate them is exactly the depth being tested:</p>
+      <ul>
+        <li><strong>Code splitting</strong> is the strategy: break the bundle into pieces that can load independently.</li>
+        <li><strong>Chunking</strong> is what the bundler does: it sees a dynamic <code>import()</code>, treats it as a split point, and emits a separate chunk file. Vite and webpack both do this at build time.</li>
+        <li><strong>Lazy loading</strong> is the runtime behaviour: the chunk is fetched over the network only when the code path that needs it actually runs.</li>
+      </ul>
+
+      <h4>How, in React</h4>
+      <pre><code>import { lazy, Suspense } from "react";
+
+const Dashboard = lazy(() =&gt; import("./Dashboard"));   <span class="c">// split point</span>
+const Settings  = lazy(() =&gt; import("./Settings"));
+
+function App() {
+  return (
+    &lt;Suspense fallback={&lt;PageSkeleton /&gt;}&gt;
+      &lt;Routes&gt;
+        &lt;Route path="/dashboard" element={&lt;Dashboard /&gt;} /&gt;
+        &lt;Route path="/settings"  element={&lt;Settings /&gt;} /&gt;
+      &lt;/Routes&gt;
+    &lt;/Suspense&gt;
+  );
+}</code></pre>
+
+      <p><code>lazy()</code> takes a function returning a dynamic <code>import()</code> promise, and that module must have a <strong>default export</strong>. <code>Suspense</code> is the declarative loading boundary: while anything beneath it is still loading, React renders the <code>fallback</code> instead. One boundary can cover a whole region — you don't need one per component.</p>
+
+      <h4>Where to split</h4>
+      <p><strong>Routes first</strong> — it's the highest-value split and nearly free, because users navigate one page at a time. Then heavy components that are conditionally shown: a modal, a chart, a map, a WYSIWYG editor. Then genuinely large third-party libraries.</p>
+
+      <div class="note trap">
+        <span class="lab">The follow-up question</span>
+        <p>"What's the downside?" Over-splitting produces a waterfall — many small chunks fetched in sequence, each one blocked on the one before, which is slower than a single larger download. And a chunk fetched on a failed network throws, so a lazy boundary wants an <strong>error boundary</strong> above it, not just a Suspense fallback. The professional refinement is preloading on intent: call the same <code>import()</code> on link hover so the chunk is warm by the time the user clicks.</p>
+      </div>
+
+      <p>If they ask how you'd measure it: the bundler's own analyser (<code>rollup-plugin-visualizer</code> for Vite, <code>webpack-bundle-analyzer</code>), then Lighthouse for the user-facing numbers, watching Time to Interactive and Largest Contentful Paint.</p>
+    </section>
+
+    <!-- ─────────────── FIBER ─────────────── -->
+    <section id="fiber">
+      <div class="block-head">
+        <span class="clock">10:30 – 11:00</span>
+        <h2>Virtual DOM, reconciliation and Fiber</h2>
+      </div>
+
+      <p>Most candidates can say "virtual DOM means React diffs a tree." Almost none can name the heuristics that make the diff affordable, or say what Fiber changed. That gap is your opportunity.</p>
+
+      <h3>Reconciliation: the algorithm</h3>
+      <p>Comparing two arbitrary trees is O(n³) — useless at UI scale. React gets it to <strong>O(n)</strong> by assuming two things that are almost always true of real interfaces:</p>
+      <ol class="prose">
+        <li><strong>Different element types produce different trees.</strong> If a <code>&lt;div&gt;</code> becomes a <code>&lt;section&gt;</code>, React doesn't attempt a clever diff — it destroys the entire subtree and rebuilds it, discarding that subtree's state. Same rule when a component's type changes.</li>
+        <li><strong>Keys tell React which children are the same across renders.</strong> Without them React pairs children by position, so an insertion at the front looks like "every item changed." With stable keys it recognises a single insertion and moves the existing DOM nodes.</li>
+      </ol>
+      <p>When the type does match, React keeps the DOM node and updates only the attributes that actually differ, then recurses into the children.</p>
+
+      <h3>React Fiber</h3>
+      <p>Fiber is the reconciler rewritten in React 16 — the same diffing rules, a completely different execution model. Before it, reconciliation was a single recursive walk that could not be interrupted. On a large tree, that walk held the one browser thread for hundreds of milliseconds and every click and keystroke queued behind it.</p>
+      <p>Fiber breaks the work into small units — one fiber node per element, held in a linked list rather than the call stack — so React can do a little work, yield to the browser to keep it responsive, and resume where it left off. Because the work is now data rather than stack frames, it can also be <strong>prioritised, paused, restarted, or thrown away</strong>.</p>
+
+      <div class="note">
+        <span class="lab">The analogy that will make this stick</span>
+        <p>Pre-Fiber reconciliation was one long synchronous method holding the only thread. Fiber turned it into a queue of small tasks on a cooperative scheduler that yields between them. It isn't parallelism — there's still exactly one thread — it's interruptibility. A typing animation stays smooth because React can pause a big re-render mid-tree and finish it after the keystroke is handled.</p>
+      </div>
+
+      <h4>Two phases</h4>
+      <p><strong>Render phase</strong> — builds the work-in-progress tree and computes the diff. Interruptible, and may be discarded or run twice, which is exactly why render must be pure and free of side effects. <strong>Commit phase</strong> — applies the DOM mutations and runs effects. Synchronous and never interrupted, so the user never sees a half-updated screen.</p>
+
+      <h4>What Fiber unlocked</h4>
+      <p>Everything marketed as "concurrent React" rests on it: Suspense, automatic batching, and the priority hooks.</p>
+      <pre><code>const [isPending, startTransition] = useTransition();
+
+<span class="c">// urgent: the input must update on this keystroke</span>
+setInput(e.target.value);
+
+<span class="c">// non-urgent: the expensive filtered list can lag a frame or two</span>
+startTransition(() =&gt; setQuery(e.target.value));</code></pre>
+      <p><code>useDeferredValue</code> is the same idea in one line: it hands you a copy of a value that's allowed to lag behind, so expensive children re-render at lower priority while the input stays instant.</p>
+    </section>
+
+    <!-- ─────────────── DRILLS ─────────────── -->
+    <section id="drills">
+      <div class="block-head">
+        <span class="clock">11:00 – 11:45</span>
+        <h2>Question drills</h2>
+      </div>
+
+      <p>Answer each one out loud before opening it. Speaking the answer is a different skill from recognising it, and the interview tests the first one.</p>
+
+      <div class="quiz">
+        <details>
+          <summary>What is the virtual DOM, and why does it exist?</summary>
+          <div class="answer">
+            <p>A lightweight JavaScript object tree describing what the UI should look like. On each render React builds a new tree, diffs it against the previous one, and applies only the changed operations to the real DOM. It exists because DOM mutations are expensive and because it lets you write declarative code — describe the target state, not the sequence of edits. Closest Java analogy: Hibernate's dirty checking, where you mutate objects and the framework computes the minimal SQL.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Props versus state.</summary>
+          <div class="answer">
+            <p>Props are passed in from the parent and are read-only inside the component — like final constructor arguments. State is owned by the component, private to it, and changing it via the setter triggers a re-render. Rule of thumb: if a value never changes inside this component, it's a prop; if the component changes it over time, it's state.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Why does React need a <code>key</code> on list items?</summary>
+          <div class="answer">
+            <p>To identify which item is which across renders, so it can reuse DOM nodes and component state correctly instead of rebuilding the list. Without stable keys React falls back to position, so inserting at the front or reordering makes it reuse the wrong node — a half-typed input keeps its text but attaches to a different row. Use a stable id from your data, not the array index.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What triggers a re-render?</summary>
+          <div class="answer">
+            <p>Three things: a state update in this component, a re-render of its parent, or a change in a Context it consumes. Note that when a parent re-renders, its children re-render by default even if their props are identical — that's what <code>React.memo</code> exists to short-circuit.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Why can't I mutate state directly?</summary>
+          <div class="answer">
+            <p>React decides whether to re-render by comparing references with <code>Object.is</code>. <code>todos.push(item)</code> changes the array's contents but hands back the same reference, so React sees no change and skips the render — the screen goes stale with no error. You must produce a new object or array: <code>setTodos([...todos, item])</code>.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What does <code>useEffect</code> do, and when does it run?</summary>
+          <div class="answer">
+            <p>It runs a side effect after the render has been committed to the screen — fetching, subscriptions, timers, imperative DOM work. Timing depends on the dependency array: no array runs it after every render, <code>[]</code> runs it once after mount, <code>[a]</code> runs it whenever <code>a</code> changes by reference. The function you return is the cleanup, and it runs on unmount and before each re-run.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>I called <code>setCount(count + 1)</code> and logged <code>count</code> — why is it the old value?</summary>
+          <div class="answer">
+            <p>Because <code>count</code> is a <code>const</code> captured by this render's closure. The setter doesn't reassign that variable; it schedules a re-render in which the function runs again with a new <code>count</code>. Updates are also batched, so two <code>setCount(count + 1)</code> calls in one handler both read the same stale value and you end up +1, not +2. The updater form <code>setCount(c =&gt; c + 1)</code> always receives the latest value.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Controlled versus uncontrolled components.</summary>
+          <div class="answer">
+            <p>Controlled: React state holds the value, the input receives it via <code>value</code> and reports changes via <code>onChange</code> — one source of truth, easy validation. Uncontrolled: the DOM node owns the value and you read it with a ref when needed. Default to controlled; use uncontrolled for file inputs or when wrapping a non-React widget.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What are the rules of hooks, and why do they exist?</summary>
+          <div class="answer">
+            <p>Call them only at the top level — never inside a condition, loop, or nested function — and only from a component or another hook. React associates hook state with call order, not name. Wrapping a <code>useState</code> in an <code>if</code> shifts every subsequent hook by one position and silently hands them each other's state.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What is a closure, and how does it bite you in React?</summary>
+          <div class="answer">
+            <p>A function that keeps access to the variables of the scope it was created in — the same idea as an anonymous inner class capturing a local. In React, every handler and effect closes over <em>that render's</em> props and state. A <code>setInterval</code> registered once with <code>[]</code> keeps seeing the first render's values forever — the "stale closure". Fix it with the updater form of the setter, or by adding the value to the dependency array.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary><code>useMemo</code> versus <code>useCallback</code>.</summary>
+          <div class="answer">
+            <p><code>useMemo</code> caches the result of a computation; <code>useCallback</code> caches a function's identity. <code>useCallback(fn, deps)</code> is exactly <code>useMemo(() =&gt; fn, deps)</code>. Both are for performance, not correctness — reach for them when a computation is genuinely expensive or when a stable identity is needed so a memoised child or an effect dependency doesn't churn.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What is prop drilling, and how do you avoid it?</summary>
+          <div class="answer">
+            <p>Passing a value down through several layers of components that don't use it, purely to reach a deep descendant. Fixes, in escalating order: restructure so the consumer sits closer to the source, pass the rendered element as <code>children</code> instead of the raw data, or use Context for genuinely global values like theme or current user.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Class components versus function components.</summary>
+          <div class="answer">
+            <p>Classes were the original model, with lifecycle methods and <code>this.setState</code>. Function components with hooks are the standard since React 16.8 and are what all new code uses — the same capabilities, less boilerplate, and stateful logic composes into custom hooks instead of HOCs or render props. Be straightforward: "I've learned hooks; I'd read a class component fine but I haven't written one."</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>How would you handle a form with validation?</summary>
+          <div class="answer">
+            <p>Controlled inputs with state per field or one state object; validate on blur and on submit rather than on every keystroke, so errors don't flash while the user is still typing; keep an <code>errors</code> object in state and render messages next to their fields; call <code>e.preventDefault()</code> in the submit handler and disable the button while the request is in flight. Mention that for anything sizeable you'd use React Hook Form rather than hand-rolling it.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>Walk me through the component lifecycle.</summary>
+          <div class="answer">
+            <p>Three phases. <strong>Mounting</strong>: constructor, render, DOM commit, then <code>componentDidMount</code> — where the first fetch or subscription goes. <strong>Updating</strong>: props or state change, render runs again, React diffs and commits, then <code>componentDidUpdate</code>. <strong>Unmounting</strong>: <code>componentWillUnmount</code>, where you cancel timers and subscriptions.</p>
+            <p>With hooks it collapses into <code>useEffect</code>: <code>[]</code> is did-mount, <code>[deps]</code> is did-update, and the returned function is will-unmount. Worth adding: error boundaries are the one lifecycle with no hook equivalent — <code>componentDidCatch</code> still requires a class.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What's a Higher Order Component, and would you use one today?</summary>
+          <div class="answer">
+            <p>A function that takes a component and returns an enhanced one — a decorator for components. It was the pre-hooks answer to sharing stateful logic like auth checks or analytics across many screens.</p>
+            <p>Today I'd use a custom hook instead: no wrapper components in the tree, no prop collisions, no static-hoisting or ref-forwarding problems. HOCs still turn up in library APIs like <code>connect()</code> and in older codebases, so I'd expect to read them more than write them.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>When would you introduce Redux, and when wouldn't you?</summary>
+          <div class="answer">
+            <p>When there's genuine client-side state shared across distant parts of the tree, and the team benefits from every change being an explicit, traceable action — that's essentially event sourcing for the UI, with the reducer as the pure apply function.</p>
+            <p>I wouldn't reach for it by default. Most state is server state, which belongs in TanStack Query or RTK Query so caching, deduplication and refetching come for free. Local UI state stays in <code>useState</code>, cross-cutting values like theme go in Context, and Zustand covers the middle ground with far less ceremony. If I did use Redux it would be Redux Toolkit — plain Redux's boilerplate is why the reputation exists.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>RTK reducers look like they mutate state. Why isn't that a bug?</summary>
+          <div class="answer">
+            <p>Because <code>createSlice</code> runs the reducer through Immer. What you're mutating is a draft proxy that records your changes; Immer then produces a new immutable state from that recording. The reducer stays pure from Redux's point of view. Written outside <code>createSlice</code>, the same line would be a genuine bug — you'd be mutating the store and React would never see a reference change.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>How would you reduce the initial bundle size of a React app?</summary>
+          <div class="answer">
+            <p>Code splitting, starting with routes — <code>React.lazy(() =&gt; import("./Page"))</code> behind a <code>Suspense</code> boundary, so a user landing on login doesn't download the admin dashboard. Then split heavy conditional components: modals, charts, editors. The bundler turns each dynamic <code>import()</code> into a separate chunk at build time and the browser fetches it on demand.</p>
+            <p>The caveats matter as much as the technique: over-splitting creates a request waterfall that's slower than one larger file, and a lazy boundary needs an error boundary above it because a chunk fetch can fail. I'd verify with a bundle analyser and Lighthouse rather than guessing.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What is Suspense actually doing?</summary>
+          <div class="answer">
+            <p>It's a declarative boundary for "something below me isn't ready yet." While any descendant is suspended — a lazy chunk still downloading, or in React 18+ a data source that's still loading — React renders the <code>fallback</code> instead of the subtree, then swaps in the real content when it resolves. It means loading states live in one place in the tree rather than being threaded through every component as an <code>isLoading</code> prop.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>How does reconciliation avoid being O(n³)?</summary>
+          <div class="answer">
+            <p>Two heuristics that hold for real UIs. First, elements of different types produce different trees — so if the type changed, React discards the whole subtree and rebuilds rather than diffing it. Second, keys identify children across renders, so a list insertion is recognised as one insertion instead of "everything shifted." Together those bring it to O(n). When types match, React keeps the DOM node and patches only the changed attributes.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>What is React Fiber, and what problem did it solve?</summary>
+          <div class="answer">
+            <p>The reconciler rewritten in React 16. The diffing rules didn't change; the execution model did. Previously reconciliation was one uninterruptible recursive walk that held the single browser thread, so a large re-render blocked every click and keystroke behind it.</p>
+            <p>Fiber represents the work as a linked list of small units instead of call-stack frames, so React can do a chunk, yield to the browser, and resume — and because the work is data, it can be prioritised, paused, or discarded. It splits into an interruptible render phase and a synchronous commit phase, which is why render must stay pure. Everything concurrent — Suspense, automatic batching, <code>useTransition</code>, <code>useDeferredValue</code> — is built on it. It's interruptibility, not parallelism; there's still one thread.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>When would you use <code>useReducer</code> over <code>useState</code>?</summary>
+          <div class="answer">
+            <p>When several pieces of state change together, when the next state depends on the previous one through non-trivial rules, or when the same transitions are dispatched from many places. The practical tell is a component with several <code>useState</code> calls that always update in lockstep.</p>
+            <p>The reason I like it: the reducer is a pure function living outside the component, so every transition is unit-testable without rendering anything — the same argument for keeping business logic out of a controller.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>If two components use the same custom hook, do they share state?</summary>
+          <div class="answer">
+            <p>No. A custom hook shares <em>logic</em>, not state — each call site gets its own independent state, exactly as if you'd written the <code>useState</code> inline. To genuinely share one value you need Context or a store like Zustand or Redux. This is the most common misconception about custom hooks.</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>How would you fetch and cache server data in a real app?</summary>
+          <div class="answer">
+            <p><code>useEffect</code> plus <code>fetch</code> is fine for a small case and shows you understand the mechanics, but in production I'd use TanStack Query (React Query) — it handles caching, deduplication, retries, background refetching, and loading/error states, which is a lot of correctness to rebuild by hand. Naming that trade-off signals real-world judgement, and it's a strong note to end on.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ─────────────── TRAPS ─────────────── -->
+    <section id="traps">
+      <div class="block-head">
+        <span class="clock">9:30 – 10:00</span>
+        <h2>The traps that catch backend developers</h2>
+      </div>
+
+      <p>These are the specific mistakes people make when arriving from a strongly-typed, multi-threaded, mutable-object world. Read them last so they're fresh.</p>
+
+      <ul>
+        <li><strong>Mutating state.</strong> <code>items.push(x)</code> then <code>setItems(items)</code> renders nothing at all. Same reference, no update, no error message.</li>
+        <li><strong>Expecting the setter to be synchronous.</strong> Logging state right after setting it shows the old value, every time.</li>
+        <li><strong>Index as key.</strong> Fine until the list reorders, then state attaches to the wrong row.</li>
+        <li><strong>Object or array literals in a dependency array.</strong> New reference every render, effect re-runs forever.</li>
+        <li><strong>Making the effect callback <code>async</code>.</strong> It must return a cleanup function, not a Promise. Define an inner async function and call it.</li>
+        <li><strong><code>{count && …}</code>.</strong> Renders a bare <code>0</code> on screen. Compare explicitly.</li>
+        <li><strong>Forgetting <code>e.preventDefault()</code></strong> in a submit handler — the page reloads and your state vanishes.</li>
+        <li><strong>Forgetting the <code>res.ok</code> check</strong> after <code>fetch</code>. A 500 sails straight through to your success path.</li>
+        <li><strong>Storing derived data in state.</strong> Compute it during render. Two sources of truth drift apart.</li>
+        <li><strong><code>class</code> instead of <code>className</code></strong>, and <code>==</code> instead of <code>===</code>. Small, but they're read as inexperience.</li>
+      </ul>
+
+      <div class="note">
+        <span class="lab">Last thirty minutes</span>
+        <p>Don't learn anything new. Re-read this section and the Java→React table, then rebuild the counter from an empty file one final time. Walking in with the syntax warm in your hands beats walking in with three more concepts you half-know.</p>
+      </div>
+    </section>
+
+    <!-- ─────────────── SAYING ─────────────── -->
+    <section id="saying">
+      <div class="block-head">
+        <span class="clock">In the room</span>
+        <h2>What to say, including when you don't know</h2>
+      </div>
+
+      <p>You are a backend engineer with three years of shipping experience who has been learning React. That's a completely coherent story — the mistake is trying to tell a different one.</p>
+
+      <h3>Lead with what's actually strong</h3>
+      <p>API design, data modelling, testing discipline, debugging production systems, thinking in state transitions. These don't stop counting because the code now runs in a browser. When you get an open question, answer it as an engineer first and a React user second.</p>
+
+      <h3>When you don't know something</h3>
+      <p>Say so in one sentence, then show how you'd reason about it. "I haven't used <code>useReducer</code> in a project. From what I understand it's for state with several related fields and complex transitions — the same reason I'd reach for a state machine on the backend rather than a pile of booleans. Is that the shape of it?" That answer is worth far more than a confident wrong one, and it turns a gap into a conversation.</p>
+
+      <h3>During live coding</h3>
+      <ul>
+        <li><strong>Narrate.</strong> Silence reads as being stuck; thinking out loud reads as being methodical.</li>
+        <li><strong>Ask clarifying questions first.</strong> "Should the filter persist on reload?" is a senior signal, not a stalling tactic.</li>
+        <li><strong>Write the JSX skeleton first</strong> with hardcoded data, confirm it renders, then wire up state. Getting something on screen early is worth a lot.</li>
+        <li><strong>Say what you'd add with more time</strong> — error states, a loading skeleton, tests, accessibility labels. It shows you know the difference between an exercise and production code.</li>
+      </ul>
+
+      <h3>Don't claim</h3>
+      <p>Redux, Next.js, React Native, class components, or performance profiling you haven't done. One follow-up question unravels it, and losing credibility mid-interview is much more expensive than the gap you were covering.</p>
+
+      <div class="note">
+        <span class="lab">One good question to ask them</span>
+        <p>"How does the team split work between backend and frontend — do engineers own a feature end to end?" It's a real question, it signals you're thinking about contributing, and the answer tells you whether your Java experience is an asset there or a footnote.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="colophon">
+    <span>One Day to React</span>
+    <span>Ten hours, ordered by yield</span>
+    <span>Cut the third app before you cut the drills</span>
+  </footer>
+
+</div>
+
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn  = document.getElementById("themeToggle");
+    var saved = null;
+    try { saved = localStorage.getItem("odr-theme"); } catch (e) {}
+    if (saved) root.setAttribute("data-theme", saved);
+
+    function current() {
+      return root.getAttribute("data-theme") ||
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    }
+    function label() { btn.textContent = current() === "dark" ? "Light" : "Dark"; }
+    label();
+
+    btn.addEventListener("click", function () {
+      var next = current() === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem("odr-theme", next); } catch (e) {}
+      label();
+    });
+  })();
+</script>
+
+</body>
+</html>

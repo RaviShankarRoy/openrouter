@@ -1,0 +1,34 @@
+# One host, no TLS. `minikube ip` -> /etc/hosts -> openrouter.local
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openrouter-api
+spec:
+  tls: null
+  rules:
+    - host: openrouter.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-go
+                port: { name: http }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openrouter-app
+spec:
+  tls: null
+  rules:
+    - host: openrouter.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-web
+                port: { name: http }

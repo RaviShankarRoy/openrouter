@@ -53,7 +53,7 @@ spec:
           command: ["celery"]
           args:
             - "-A"
-            - "app.infrastructure.celery.app"
+            - "app.repository.celery_app"
             - "worker"
             - "--loglevel=info"
             - "--queues=default,media"
@@ -105,7 +105,7 @@ spec:
               command:
                 - sh
                 - -c
-                - "celery -A app.infrastructure.celery.app inspect ping -d celery@$HOSTNAME --timeout=10"
+                - "celery -A app.repository.celery_app inspect ping -d celery@$HOSTNAME --timeout=10"
             initialDelaySeconds: 60
             periodSeconds: 60
             timeoutSeconds: 15

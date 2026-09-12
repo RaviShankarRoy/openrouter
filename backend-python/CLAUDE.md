@@ -14,14 +14,14 @@ uv run alembic upgrade head            # apply migrations
 uv run alembic revision -m "<msg>" --autogenerate    # new migration
 uv run uvicorn app.main:app --reload --port 8000     # dev server (HTTP)
 uv run python -m app.grpc_main                       # dev gRPC server (port 50051)
-uv run celery -A app.infrastructure.celery_app worker --loglevel=info     # worker
+uv run celery -A app.repository.celery_app worker --loglevel=info     # worker
 make test                              # delegates to pytest
 make dev                               # delegates to uvicorn --reload
 ```
 
-**Critical:** the Celery module path is `app.infrastructure.celery_app` (file, not package). The k8s worker manifest currently references `app.infrastructure.celery.app` — that's a bug.
+**Critical:** the Celery module path is `app.repository.celery_app` (file, not package). The k8s worker manifest currently references `app.repository.celery.app` — that's a bug.
 
-## Layout (DDD / Clean Architecture)
+## Layout (Layered N-Tier)
 
 ```
 app/
@@ -30,30 +30,37 @@ app/
 ├── api/
 │   ├── routes/             # HTTP routes: auth, oauth, billing, models, admin, webhooks
 │   └── decorators.py       # @audit_log, @require_permission
-├── application/            # use cases (warm path)
-│   ├── services/           # auth_service, billing_service, oauth_service, ...
+├── service/                # ── business tier: use cases (warm path)
+│   ├── auth_service.py     # also billing_service.py, oauth_service.py
+│   ├── domain/             # entities, value objects, errors (DomainError hierarchy),
+│   │                       #   repositories.py = the Port interfaces
 │   ├── routing/strategies/ # pluggable routing algorithms
 │   ├── guardrails/         # pipeline.py (Phase 3, mostly skeleton)
-│   └── mcp/                # MCP server/client (Phase 4 stubs)
-├── domain/                 # entities, value objects, errors (DomainError hierarchy)
-├── infrastructure/
+│   ├── mcp/                # MCP server/client (Phase 4 stubs)
+│   └── uow.py              # UnitOfWork port
+├── repository/             # ── data tier: implements the domain Ports
+│   ├── api_keys.py         # the aggregate repositories sit at the top level:
+│   ├── credits.py          #   credits, organizations, usage, users, video_jobs
 │   ├── database.py         # asyncpg pool init
 │   ├── redis_client.py     # redis-py async
 │   ├── celery_app.py       # Celery app — note path
 │   ├── uow.py              # SqlUnitOfWork (async with uow:)
 │   ├── orm_models.py       # SQLAlchemy 2.0 declarative
-│   ├── repositories/       # repository pattern, async
 │   ├── providers/          # base.py + openai.py + anthropic.py + google.py
 │   ├── billing/            # stripe_client.py (Phase 2, interface complete)
-│   ├── grpc/               # server.py for AuthServicer
+│   ├── grpc/               # server.py for AuthServicer + gen/ (gitignored)
 │   ├── events/bus.py       # NATS publisher
 │   └── tasks/              # Celery: video.py, webhooks.py, billing.py
-├── core/
+├── shared/                 # ── cross-cutting, imported by any tier
 │   ├── config.py           # pydantic-settings
 │   ├── logging.py          # structlog JSON formatter
 │   ├── tracing.py          # OpenTelemetry setup
 │   └── security.py         # argon2id (m=64MB,t=3,p=4), JWT, password hashing
 └── tests/                  # pytest + pytest-asyncio + testcontainers
+
+**Dependency rule: imports point downward only.** `api → service → repository`, and any
+tier may import `shared`. The service tier reaches the repository tier through the Port
+interfaces in `service/domain/repositories.py`, never by importing `app.repository`.
 alembic/
 ├── env.py
 └── versions/               # forward-only migrations
@@ -65,7 +72,7 @@ alembic/
 - **Repository + Unit of Work.** `async with uow:` opens a session AND a transaction. Don't call `with_for_update()` outside `async with uow.begin()` — it silently becomes a plain SELECT.
 - **Dependency Injection** via FastAPI `Depends()`. No third-party DI lib.
 - **Pub/Sub** via NATS for fire-and-forget metering events. Celery for durable jobs.
-- **Provider adapters** subclass `app/infrastructure/providers/base.py:ProviderAdapter` — implement `chat_completion`, `embed`, `stream_chat`.
+- **Provider adapters** subclass `app/repository/providers/base.py:ProviderAdapter` — implement `chat_completion`, `embed`, `stream_chat`.
 - **Audit logging** via `@audit_log(action="...", target_id_arg="...")` decorator on admin routes.
 
 ## Database

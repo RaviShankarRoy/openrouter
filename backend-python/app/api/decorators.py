@@ -11,11 +11,11 @@ from typing import Any, Awaitable, Callable, TypeVar
 from uuid import uuid4
 
 from app.api.dependencies import AuthContext
-from app.core.logging import get_logger
-from app.domain.entities import UserRole
-from app.domain.errors import Forbidden
-from app.infrastructure import orm_models as orm
-from app.infrastructure.database import get_session_factory
+from app.shared.logging import get_logger
+from app.service.domain.entities import UserRole
+from app.service.domain.errors import Forbidden
+from app.repository import orm_models as orm
+from app.repository.database import get_session_factory
 
 T = TypeVar("T")
 

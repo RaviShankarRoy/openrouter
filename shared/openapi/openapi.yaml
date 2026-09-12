@@ -1,5 +1,5 @@
 # Canonical public API spec — OpenAI-compatible surface.
-# Generated TypeScript SDK lives at frontend-web/src/shared/api/generated/.
+# Generated TypeScript SDK lives at frontend-web/src/repository/generated/.
 # Generated Python types live at backend-python/app/api/generated/.
 # Single source of truth: this file. Both languages run codegen on CI.
 

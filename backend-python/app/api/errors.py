@@ -10,8 +10,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.logging import get_logger
-from app.domain.errors import DomainError
+from app.shared.logging import get_logger
+from app.service.domain.errors import DomainError
 
 _log = get_logger(__name__)
 

@@ -1,0 +1,90 @@
+# Minikube overlay — everything in-cluster, one replica, laptop-sized.
+#
+# Differences from the `dev` overlay:
+#   - No namePrefix. Service names stay `postgres` / `redis` / `nats`, so the
+#     connection strings in secrets.yaml below are literal and obvious.
+#   - Plain Secrets instead of external-secrets.io ExternalSecrets. Minikube has
+#     no Vault and no ESO controller, so the base ones are deleted here.
+#   - Stateful infra (postgres/redis/nats) resource requests cut to fit 4 CPU / 8GB.
+#   - Ingress collapsed onto one host with no TLS.
+#
+# NEVER use this overlay anywhere but a local cluster: the secrets are in git.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: openrouter
+
+commonLabels:
+  app.kubernetes.io/instance: openrouter-minikube
+  environment: minikube
+
+resources:
+  - ../../base
+  - secrets.yaml
+
+# Point at your Docker Hub account. Replace DOCKERHUB_USER before applying,
+# or run:  kustomize edit set image ...
+images:
+  - name: ghcr.io/openrouter/gateway-go
+    newName: docker.io/DOCKERHUB_USER/gateway-go
+    newTag: dev
+  - name: ghcr.io/openrouter/backend-python
+    newName: docker.io/DOCKERHUB_USER/backend-python
+    newTag: dev
+  - name: ghcr.io/openrouter/frontend-web
+    newName: docker.io/DOCKERHUB_USER/frontend-web
+    newTag: dev
+
+patches:
+  # Base ships ExternalSecrets + a Vault SecretStore. Neither CRD exists on
+  # minikube, so strip them and rely on secrets.yaml instead.
+  - target: { kind: ExternalSecret }
+    patch: |-
+      $patch: delete
+      apiVersion: external-secrets.io/v1beta1
+      kind: ExternalSecret
+      metadata:
+        name: DELETE_ME
+  - target: { kind: SecretStore }
+    patch: |-
+      $patch: delete
+      apiVersion: external-secrets.io/v1beta1
+      kind: SecretStore
+      metadata:
+        name: DELETE_ME
+  # ServiceMonitor / PrometheusRule need the Prometheus Operator CRDs.
+  - target: { kind: ServiceMonitor }
+    patch: |-
+      $patch: delete
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: DELETE_ME
+  - target: { kind: PrometheusRule }
+    patch: |-
+      $patch: delete
+      apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      metadata:
+        name: DELETE_ME
+
+  - path: patches/postgres-plain.yaml
+    target:
+      kind: StatefulSet
+      name: postgres
+  - path: patches/replicas.yaml
+  - path: patches/resources.yaml
+  - path: patches/ingress.yaml
+
+configMapGenerator:
+  - name: openrouter-env
+    behavior: create
+    literals:
+      - ENVIRONMENT=dev
+      - LOG_LEVEL=debug
+      - NEXT_PUBLIC_API_BASE_URL=http://openrouter.local
+      - NEXT_PUBLIC_BACKEND_URL=http://backend-python:8000
+      - NEXTAUTH_URL=http://openrouter.local
+
+generatorOptions:
+  disableNameSuffixHash: true

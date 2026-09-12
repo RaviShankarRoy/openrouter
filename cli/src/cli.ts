@@ -2,14 +2,14 @@
 // Entry point. Wires commander, applies global options, dispatches subcommands.
 // Implements DRD CLI-001..CLI-005 surface registration.
 import { Command, Option } from 'commander';
-import { getVersion } from './lib/version.js';
-import { exitWithError } from './lib/errors.js';
-import { registerLogin } from './commands/login.js';
-import { registerLogout } from './commands/logout.js';
-import { registerModels } from './commands/models.js';
-import { registerChat } from './commands/chat.js';
-import { registerUsage } from './commands/usage.js';
-import { registerKeys } from './commands/keys.js';
+import { getVersion } from './repository/version.js';
+import { exitWithError } from './shared/errors.js';
+import { registerLogin } from './api/login.js';
+import { registerLogout } from './api/logout.js';
+import { registerModels } from './api/models.js';
+import { registerChat } from './api/chat.js';
+import { registerUsage } from './api/usage.js';
+import { registerKeys } from './api/keys.js';
 
 export interface GlobalOptions {
   json: boolean;

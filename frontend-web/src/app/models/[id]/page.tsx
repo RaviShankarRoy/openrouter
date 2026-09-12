@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 
-import { modelRepository } from "@/entities/model/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Badge } from "@/shared/ui/badge";
-import { formatPerMillion } from "@/shared/lib/format";
+import { modelRepository } from "@/repository/model";
+import type { Model } from "@/service/model/model";
+import { Card, CardContent, CardHeader, CardTitle } from "@/api/ui/card";
+import { Badge } from "@/api/ui/badge";
+import { formatPerMillion } from "@/shared/format";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -13,10 +14,10 @@ interface Props {
 export default async function ModelDetailPage({ params }: Props) {
   const { id } = await params;
   const decoded = decodeURIComponent(id);
-  let model;
+  let model: Model | undefined;
   try {
     const list = await modelRepository.list();
-    model = list.data.find((m) => m.id === decoded);
+    model = list.find((m) => m.id === decoded);
   } catch {
     model = undefined;
   }

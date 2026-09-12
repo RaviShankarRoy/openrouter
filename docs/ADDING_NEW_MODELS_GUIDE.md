@@ -75,12 +75,12 @@ API shape is different. Today the project has three real translators:
 
 | Provider | Adapter file | Why it needs translation |
 |---|---|---|
-| OpenAI | [adapters/openai.go](../gateway-go/internal/proxy/adapters/openai.go) | Canonical format — passthrough |
-| Anthropic | [adapters/anthropic.go](../gateway-go/internal/proxy/adapters/anthropic.go) | Different field names (`messages` shape, system messages, tool roles) |
-| Google (Gemini) | [adapters/google.go](../gateway-go/internal/proxy/adapters/google.go) | Completely different REST shape (`generateContent` instead of `chat/completions`) |
+| OpenAI | [adapters/openai.go](../gateway-go/internal/repository/adapters/openai.go) | Canonical format — passthrough |
+| Anthropic | [adapters/anthropic.go](../gateway-go/internal/repository/adapters/anthropic.go) | Different field names (`messages` shape, system messages, tool roles) |
+| Google (Gemini) | [adapters/google.go](../gateway-go/internal/repository/adapters/google.go) | Completely different REST shape (`generateContent` instead of `chat/completions`) |
 
 Both Gemma 4 and Qwen 3.6 are served by hosts that **emulate the OpenAI format**,
-so they reuse the OpenAI adapter unchanged. Look at [proxy.go:43-51](../gateway-go/internal/proxy/proxy.go#L43-L51):
+so they reuse the OpenAI adapter unchanged. Look at [proxy.go:43-51](../gateway-go/internal/service/proxy/proxy.go#L43-L51):
 
 ```go
 adapters: map[string]adapters.ProviderAdapter{
@@ -155,7 +155,7 @@ AWS outages, just with movies instead of LLMs.)
 
 > **Hot reload:** This file can be edited and reloaded without restarting the
 > gateway — just send the process a `SIGHUP` signal. See
-> [server.go:188-200](../gateway-go/internal/server/server.go#L188-L200) for
+> [server.go:188-200](../gateway-go/internal/api/server/server.go#L188-L200) for
 > the implementation. Means: you can add a model in production with zero
 > downtime.
 
@@ -208,7 +208,7 @@ In plain English:
 
 When a user runs a request, the backend looks up this row, multiplies the
 prices by the token counts the provider reported, and debits the user's credit
-balance. See [pricing_repository.py](../backend-python/app/infrastructure/billing/pricing_repository.py).
+balance. See [pricing_repository.py](../backend-python/app/repository/billing/pricing_repository.py).
 
 ### 3.4 — "What can it do?"
 
@@ -229,17 +229,17 @@ sentence what changed and why.
 | File | What changed | Why |
 |---|---|---|
 | [providers.yaml](../gateway-go/configs/providers.yaml) | Added 3 providers (`together`, `fireworks`, `ollama`) and 8 model entries | Tells the gateway where to send requests for the new models |
-| [proxy.go](../gateway-go/internal/proxy/proxy.go) | Added 3 lines mapping new provider names to the existing OpenAI adapter | All three providers speak OpenAI format — no new translator needed |
+| [proxy.go](../gateway-go/internal/service/proxy/proxy.go) | Added 3 lines mapping new provider names to the existing OpenAI adapter | All three providers speak OpenAI format — no new translator needed |
 
 ### Backend (Python)
 
 | File | What changed | Why |
 |---|---|---|
-| [openai_adapter.py](../backend-python/app/infrastructure/providers/openai_adapter.py) | Pulled `_provider_name`, `_base_url`, `_api_key_setting` out as class attributes | So Gemma/Qwen can subclass it and only override those three things |
-| **NEW** [gemma_adapter.py](../backend-python/app/infrastructure/providers/gemma_adapter.py) | Subclass for Gemma 4 (~30 lines, mostly pricing) | Lets the Python control plane track Gemma usage and bill for it |
-| **NEW** [qwen_adapter.py](../backend-python/app/infrastructure/providers/qwen_adapter.py) | Subclass for Qwen 3.x (~30 lines, mostly pricing) | Same as above for Qwen |
-| [bootstrap.py](../backend-python/app/infrastructure/providers/bootstrap.py) | Registered both adapters at startup | Makes them visible to the rest of the system |
-| [config.py](../backend-python/app/core/config.py) | Added 3 new env-var settings | So Python knows how to read `TOGETHER_API_KEY` etc. |
+| [openai_adapter.py](../backend-python/app/repository/providers/openai_adapter.py) | Pulled `_provider_name`, `_base_url`, `_api_key_setting` out as class attributes | So Gemma/Qwen can subclass it and only override those three things |
+| **NEW** [gemma_adapter.py](../backend-python/app/repository/providers/gemma_adapter.py) | Subclass for Gemma 4 (~30 lines, mostly pricing) | Lets the Python control plane track Gemma usage and bill for it |
+| **NEW** [qwen_adapter.py](../backend-python/app/repository/providers/qwen_adapter.py) | Subclass for Qwen 3.x (~30 lines, mostly pricing) | Same as above for Qwen |
+| [bootstrap.py](../backend-python/app/repository/providers/bootstrap.py) | Registered both adapters at startup | Makes them visible to the rest of the system |
+| [config.py](../backend-python/app/shared/config.py) | Added 3 new env-var settings | So Python knows how to read `TOGETHER_API_KEY` etc. |
 | **NEW** [alembic migration](../backend-python/alembic/versions/20260501_0001_add_gemma_qwen_pricing.py) | Inserts 8 pricing rows | Surfaces models in `/api/v1/models`, billing, frontend marketplace |
 
 ### Semantic routing (Python)
@@ -247,8 +247,8 @@ sentence what changed and why.
 | File | What changed | Why |
 |---|---|---|
 | **NEW** [routing.yaml](../backend-python/configs/routing.yaml) | Declares the 11-model "auto" candidate pool with capability tags | Decoupled from code — operators can add models without redeploying |
-| **NEW** [routing/config.py](../backend-python/app/application/routing/config.py) | YAML loader and `RoutingConfig.filter()` method | Picks candidates that satisfy `RequestHints` (vision, EU residency, etc.) |
-| [routing_servicer.py](../backend-python/app/infrastructure/grpc/routing_servicer.py) | Now calls config + strategy registry instead of returning a hardcoded answer | The actual brain of `openrouter/auto` |
+| **NEW** [routing/config.py](../backend-python/app/service/routing/config.py) | YAML loader and `RoutingConfig.filter()` method | Picks candidates that satisfy `RequestHints` (vision, EU residency, etc.) |
+| [routing_servicer.py](../backend-python/app/repository/grpc/routing_servicer.py) | Now calls config + strategy registry instead of returning a hardcoded answer | The actual brain of `openrouter/auto` |
 
 ### Self-hosting (Docker)
 
@@ -294,7 +294,7 @@ decision is "semantic routing".
 ### How it used to work
 
 Before this implementation, the routing servicer
-[routing_servicer.py](../backend-python/app/infrastructure/grpc/routing_servicer.py)
+[routing_servicer.py](../backend-python/app/repository/grpc/routing_servicer.py)
 just returned a hardcoded answer: "always use Claude Sonnet 4, fallback to
 GPT-4o-mini." That worked, but it ignored the new models entirely.
 
@@ -356,9 +356,9 @@ The remaining candidates are handed to a **strategy**. The project has three:
 
 | Strategy | What it does | Code |
 |---|---|---|
-| `cost` | Cheapest first | [strategies.py:37-42](../backend-python/app/application/routing/strategies.py#L37) |
-| `latency` | Fastest first | [strategies.py:45-50](../backend-python/app/application/routing/strategies.py#L45) |
-| `quality` | Highest-quality first | [strategies.py:53-58](../backend-python/app/application/routing/strategies.py#L53) |
+| `cost` | Cheapest first | [strategies.py:37-42](../backend-python/app/service/routing/strategies.py#L37) |
+| `latency` | Fastest first | [strategies.py:45-50](../backend-python/app/service/routing/strategies.py#L45) |
+| `quality` | Highest-quality first | [strategies.py:53-58](../backend-python/app/service/routing/strategies.py#L53) |
 
 The default is `cost`. When we tested it, the `cost` strategy picked
 `gpt-4o-mini` ($0.15/M) as primary, with Gemma 4 26B-MoE and Qwen 3.6-27B as
@@ -490,16 +490,16 @@ shape.
 
 Each model entry in `providers.yaml` has a `fallback` list. The gateway tries
 the primary, then walks down the list. The **circuit breaker**
-([circuitbreaker/registry.go](../gateway-go/internal/circuitbreaker/registry.go))
+([circuitbreaker/registry.go](../gateway-go/internal/service/circuitbreaker/registry.go))
 also "trips" — after 5 failures in a row, it stops calling Together for 30
 seconds, so subsequent requests don't waste time on a known-bad provider.
 
 #### "Where are my API key billing limits enforced?"
 
 In two places. The **rate limiter**
-([ratelimit/limiter.go](../gateway-go/internal/ratelimit/limiter.go)) caps
+([ratelimit/limiter.go](../gateway-go/internal/service/ratelimit/limiter.go)) caps
 requests-per-minute. The **credit balance**
-([entities.py](../backend-python/app/domain/entities.py)) caps spend. Each
+([entities.py](../backend-python/app/service/domain/entities.py)) caps spend. Each
 request reserves an estimated cost up front; after the response, the actual
 cost is settled. If your balance is too low, the request is rejected before
 ever touching a provider.
@@ -517,16 +517,16 @@ reading from the database too.
 
 Yes. You'd:
 
-1. Write a new adapter in [gateway-go/internal/proxy/adapters/](../gateway-go/internal/proxy/adapters/)
+1. Write a new adapter in [gateway-go/internal/repository/adapters/](../gateway-go/internal/repository/adapters/)
    that implements the `ProviderAdapter` interface
-   ([adapter.go](../gateway-go/internal/proxy/adapters/adapter.go)).
-2. Register it in [proxy.go:43](../gateway-go/internal/proxy/proxy.go#L43)'s
+   ([adapter.go](../gateway-go/internal/repository/adapters/adapter.go)).
+2. Register it in [proxy.go:43](../gateway-go/internal/service/proxy/proxy.go#L43)'s
    adapter map.
 3. Do everything else the same way (providers.yaml, pricing migration, etc.).
 
 The adapter is responsible for translating the OpenAI-format request into the
 provider's native shape, and the response back. Look at
-[adapters/anthropic.go](../gateway-go/internal/proxy/adapters/anthropic.go) for
+[adapters/anthropic.go](../gateway-go/internal/repository/adapters/anthropic.go) for
 a worked example.
 
 #### "What's the difference between `google/gemini-1.5-pro` and `google/gemma-4-31b`?"

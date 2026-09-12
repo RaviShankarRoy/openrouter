@@ -11,11 +11,11 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.dependencies import get_uow
-from app.application.services.oauth_service import (
+from app.service.oauth_service import (
     OAuthExchangeCommand,
     OAuthService,
 )
-from app.application.uow import UnitOfWork
+from app.service.uow import UnitOfWork
 
 router = APIRouter()
 

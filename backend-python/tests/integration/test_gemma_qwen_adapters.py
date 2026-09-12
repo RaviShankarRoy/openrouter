@@ -19,9 +19,9 @@ import pytest
 import respx
 from httpx import Response
 
-from app.infrastructure.providers.base import UnifiedRequest
-from app.infrastructure.providers.gemma_adapter import GemmaAdapter
-from app.infrastructure.providers.qwen_adapter import QwenAdapter
+from app.repository.providers.base import UnifiedRequest
+from app.repository.providers.gemma_adapter import GemmaAdapter
+from app.repository.providers.qwen_adapter import QwenAdapter
 
 
 def _openai_shape(model: str, content: str, prompt_tokens: int = 5, completion_tokens: int = 2) -> dict:
@@ -89,7 +89,7 @@ async def test_qwen_hits_together(respx_mock: respx.Router) -> None:
 @pytest.mark.asyncio
 async def test_gemma_pricing_math() -> None:
     """Pricing dict drives cost calculation — verify a known model produces the right cost."""
-    from app.domain.value_objects import ModelPricing, TokenCounts
+    from app.service.domain.value_objects import ModelPricing, TokenCounts
 
     tier = GemmaAdapter().pricing("google/gemma-4-31b")
     pricing = ModelPricing(
@@ -103,7 +103,7 @@ async def test_gemma_pricing_math() -> None:
 
 @pytest.mark.asyncio
 async def test_qwen_pricing_math() -> None:
-    from app.domain.value_objects import ModelPricing, TokenCounts
+    from app.service.domain.value_objects import ModelPricing, TokenCounts
 
     tier = QwenAdapter().pricing("qwen/qwen3.6-27b")
     pricing = ModelPricing(

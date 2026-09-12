@@ -14,7 +14,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.core.logging import get_logger
+from app.shared.logging import get_logger
 
 _REQUEST_ID_HEADER = "x-request-id"
 

@@ -1,9 +1,9 @@
 import Link from "next/link";
 
-import { LoginButton } from "@/features/auth/login-button/LoginButton";
-import { ThemeToggle } from "@/features/theme/theme-toggle/ThemeToggle";
-import { Button } from "@/shared/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import { LoginButton } from "@/api/components/auth/LoginButton";
+import { ThemeToggle } from "@/api/components/theme/ThemeToggle";
+import { Button } from "@/api/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/api/ui/card";
 
 // FE-001 landing page. RSC by default — no client JS shipped except for the
 // interactive widgets imported below (LoginButton, ThemeToggle).
@@ -45,7 +45,7 @@ export default function HomePage() {
             Docs
           </Link>
           <ThemeToggle />
-          <LoginButton />
+          <LoginButton provider="google" label="Sign in" />
         </nav>
       </header>
 

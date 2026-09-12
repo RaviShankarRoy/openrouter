@@ -8,12 +8,12 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.application.services.billing_service import BillingService, MeterUsageCommand
-from app.application.uow import UnitOfWork
-from app.domain.entities import CreditBalance, UsageRecord
-from app.domain.errors import InsufficientCredits
-from app.domain.repositories import CreditRepository, UsageRepository
-from app.domain.value_objects import ModelPricing, Money, TokenCounts
+from app.service.billing_service import BillingService, MeterUsageCommand
+from app.service.uow import UnitOfWork
+from app.service.domain.entities import CreditBalance, UsageRecord
+from app.service.domain.errors import InsufficientCredits
+from app.service.domain.repositories import CreditRepository, UsageRepository
+from app.service.domain.value_objects import ModelPricing, Money, TokenCounts
 
 
 class _InMemCreditRepo(CreditRepository):

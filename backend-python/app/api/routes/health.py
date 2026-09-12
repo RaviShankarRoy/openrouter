@@ -12,9 +12,9 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from app import __version__
-from app.core.logging import get_logger
-from app.infrastructure.database import get_session_factory
-from app.infrastructure.redis_client import get_redis
+from app.shared.logging import get_logger
+from app.repository.database import get_session_factory
+from app.repository.redis_client import get_redis
 
 router = APIRouter()
 _log = get_logger(__name__)

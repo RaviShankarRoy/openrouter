@@ -8,8 +8,8 @@ from alembic import context
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.engine import Connection
 
-from app.core.config import settings
-from app.infrastructure.database import metadata  # all models registered here
+from app.shared.config import settings
+from app.repository.database import metadata  # all models registered here
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.postgres_dsn)

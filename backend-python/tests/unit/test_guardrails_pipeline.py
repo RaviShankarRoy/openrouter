@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from app.application.guardrails.guards import (
+from app.service.guardrails.guards import (
     PIIRedactionGuard,
     PromptInjectionGuard,
     TokenLimitGuard,
 )
-from app.application.guardrails.pipeline import (
+from app.service.guardrails.pipeline import (
     Guardrail,
     GuardrailPipeline,
     GuardrailResult,

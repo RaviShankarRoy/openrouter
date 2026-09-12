@@ -1,6 +1,6 @@
 # frontend-web — Dashboard + Playground + Marketplace
 
-Next.js 15 App Router + React 19 + Tailwind 4 + shadcn/ui + Vercel AI SDK. Feature-Sliced Design. RSC by default.
+Next.js 15 App Router + React 19 + Tailwind 4 + shadcn/ui + Vercel AI SDK. Layered n-tier. RSC by default.
 
 ## Commands
 
@@ -15,11 +15,12 @@ pnpm typecheck            # tsc --noEmit
 pnpm e2e                  # playwright e2e — requires docker-compose up + backend running
 ```
 
-## Layout (Feature-Sliced)
+## Layout (Layered N-Tier)
 
 ```
 src/
-├── app/                          # App Router (each folder = route segment)
+├── app/                          # App Router — NOT a tier; Next.js routes are the
+│                                 #   filesystem, so this cannot be moved or renamed
 │   ├── (marketing)/              # landing
 │   ├── dashboard/                # FE-005 usage overview
 │   ├── playground/               # FE-003 streaming chat (Vercel AI SDK)
@@ -29,18 +30,23 @@ src/
 │   ├── login/                    # FE-012 OAuth
 │   ├── api/                      # BFF: proxy + nextauth routes
 │   └── layout.tsx                # root layout, providers
-├── features/                     # cross-cutting features
-│   ├── billing/
-│   ├── code-snippets/            # FE-007 request builder
-│   └── playground/
-├── entities/                     # domain models for UI
-├── widgets/                      # composed UI blocks
-├── shared/
-│   ├── api/                      # OpenAPI-generated fetch client (src/shared/api/client.ts)
+├── api/                          # ── presentation tier
+│   ├── components/               # grouped by area: api-keys, auth, billing,
+│   │                             #   models, playground, theme
+│   ├── layout/                   # Sidebar, Topbar, UsageChart
+│   └── ui/                       # shadcn/ui primitives
+├── service/                      # ── business tier
 │   ├── config/env.ts             # zod-validated env, server vs client split
-│   ├── ui/                       # shadcn/ui primitives
+│   ├── hooks/                    # use-clipboard, use-debounce, use-streaming-chat
 │   ├── providers/                # auth, theme, query client
-│   └── hooks/
+│   ├── model/                    # UI domain types: api-key, model, usage, user
+│   └── types/
+├── repository/                   # ── data tier
+│   ├── client.ts                 # OpenAPI-generated fetch client
+│   ├── errors.ts
+│   ├── generated/schema.ts       # openapi-typescript output (gitignored)
+│   └── api-key.ts                # per-entity fetchers: model, usage, user
+├── shared/                       # ── cross-cutting: cn, format, logger
 ├── middleware.ts                 # auth gate for protected routes
 └── instrumentation.ts            # OpenTelemetry init
 ```
@@ -48,7 +54,7 @@ src/
 ## RSC Rules
 
 - **Default to server components.** Add `'use client'` only when you need state, effects, browser APIs, or event handlers.
-- **Server env vars** (no `NEXT_PUBLIC_` prefix) are validated in `src/shared/config/env.ts` and gated by `isServer`. Add `import "server-only"` to any module that touches `serverEnv` to prevent accidental client bundling.
+- **Server env vars** (no `NEXT_PUBLIC_` prefix) are validated in `src/service/config/env.ts` and gated by `isServer`. Add `import "server-only"` to any module that touches `serverEnv` to prevent accidental client bundling.
 - **`NEXT_PUBLIC_*` vars are bundled into the client** — never put secrets there.
 
 ## BFF Proxy
@@ -65,7 +71,7 @@ OAuth flow in `src/app/api/auth/[...nextauth]/route.ts`. The JWT callback exchan
 
 ## Streaming UI
 
-`features/playground/` uses the Vercel AI SDK `useChat` hook. SSE comes from the Go gateway via the BFF proxy. Keep `experimental_useFormStatus` patterns in client components.
+`src/api/components/playground/` uses the Vercel AI SDK `useChat` hook. SSE comes from the Go gateway via the BFF proxy. Keep `experimental_useFormStatus` patterns in client components.
 
 ## Testing
 

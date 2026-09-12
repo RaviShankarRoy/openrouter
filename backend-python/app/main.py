@@ -18,13 +18,13 @@ from app import __version__
 from app.api.routes import register_routes
 from app.api.middleware import register_middleware
 from app.api.errors import register_exception_handlers
-from app.application.routing.config import reload_routing_config
-from app.core.config import settings
-from app.core.logging import configure_logging, get_logger
-from app.core.tracing import init_tracing
-from app.infrastructure.database import init_db, close_db
-from app.infrastructure.redis_client import init_redis, close_redis
-from app.infrastructure.events.bus import init_event_bus, close_event_bus
+from app.service.routing.config import reload_routing_config
+from app.shared.config import settings
+from app.shared.logging import configure_logging, get_logger
+from app.shared.tracing import init_tracing
+from app.repository.database import init_db, close_db
+from app.repository.redis_client import init_redis, close_redis
+from app.repository.events.bus import init_event_bus, close_event_bus
 
 
 _log = get_logger(__name__)

@@ -8,8 +8,8 @@ import pytest
 import respx
 from httpx import Response
 
-from app.infrastructure.providers.base import UnifiedRequest
-from app.infrastructure.providers.openai_adapter import OpenAIAdapter
+from app.repository.providers.base import UnifiedRequest
+from app.repository.providers.openai_adapter import OpenAIAdapter
 
 
 @pytest.mark.asyncio

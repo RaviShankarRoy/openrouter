@@ -1,0 +1,55 @@
+# Base runs Spilo/Patroni for HA Postgres. On minikube that does not work:
+#   1. It reads `openrouter-postgres-bootstrap`, a Secret nothing in the repo
+#      creates — the pod fails with CreateContainerConfigError.
+#   2. It uses the Kubernetes API as its DCS, which needs a Role/RoleBinding
+#      that base does not ship.
+# Neither is worth solving for a laptop, so replace the whole container with
+# the same plain pgvector image docker-compose uses. HA is not a local concern.
+- op: replace
+  path: /spec/template/spec/containers/0
+  value:
+    name: postgres
+    image: pgvector/pgvector:pg16
+    imagePullPolicy: IfNotPresent
+    ports:
+      - name: postgres
+        containerPort: 5432
+    env:
+      - name: POSTGRES_USER
+        value: openrouter
+      - name: POSTGRES_PASSWORD
+        value: dev_only_password
+      - name: POSTGRES_DB
+        value: openrouter
+      # The image initdb's into a subdirectory so the PVC's lost+found does
+      # not make it think the volume is a non-empty cluster.
+      - name: PGDATA
+        value: /var/lib/postgresql/data/pgdata
+    resources:
+      requests: { cpu: "100m", memory: "512Mi" }
+      limits: { cpu: "1000m", memory: "1Gi" }
+    readinessProbe:
+      exec:
+        command: ["pg_isready", "-U", "openrouter", "-d", "openrouter"]
+      initialDelaySeconds: 5
+      periodSeconds: 5
+    livenessProbe:
+      exec:
+        command: ["pg_isready", "-U", "openrouter", "-d", "openrouter"]
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop: ["ALL"]
+    volumeMounts:
+      - name: pgdata
+        mountPath: /var/lib/postgresql/data
+# Spilo ran as uid 999; the pgvector image runs as postgres (uid 999 too) but
+# expects to start as root to chown the volume. Drop the pod-level non-root
+# pin so initdb can fix permissions on a fresh PVC.
+- op: remove
+  path: /spec/template/spec/securityContext/runAsNonRoot
+- op: remove
+  path: /spec/template/spec/securityContext/runAsUser

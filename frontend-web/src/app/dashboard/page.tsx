@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 
-import { CreditBalanceCard } from "@/features/billing/credit-balance-card/CreditBalanceCard";
-import { UsageChart } from "@/widgets/usage-chart/UsageChart";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Skeleton } from "@/shared/ui/skeleton";
+import { CreditBalanceCard } from "@/api/components/billing/CreditBalanceCard";
+import { UsageChart } from "@/api/layout/UsageChart";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/api/ui/card";
+import { Skeleton } from "@/api/ui/skeleton";
 
 // FE-005 dashboard overview. Composed of three independently-streaming RSC
 // boundaries via Suspense so a slow query doesn't block the page shell.

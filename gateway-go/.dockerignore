@@ -1,0 +1,12 @@
+.git
+.gitignore
+.idea/
+Dockerfile
+.dockerignore
+README.md
+CLAUDE.md
+bin/
+*.test
+*.out
+coverage.txt
+.air.toml

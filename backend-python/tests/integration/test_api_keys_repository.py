@@ -6,11 +6,11 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import generate_api_key, hash_api_key, sha256_lookup
-from app.domain.entities import APIKey, KeyScope, Organization, User, UserRole
-from app.infrastructure.repositories.api_keys import SqlAPIKeyRepository
-from app.infrastructure.repositories.organizations import SqlOrganizationRepository
-from app.infrastructure.repositories.users import SqlUserRepository
+from app.shared.security import generate_api_key, hash_api_key, sha256_lookup
+from app.service.domain.entities import APIKey, KeyScope, Organization, User, UserRole
+from app.repository.api_keys import SqlAPIKeyRepository
+from app.repository.organizations import SqlOrganizationRepository
+from app.repository.users import SqlUserRepository
 
 
 @pytest.mark.asyncio

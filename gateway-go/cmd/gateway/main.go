@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/openrouter/gateway-go/internal/config"
-	"github.com/openrouter/gateway-go/internal/observability"
-	"github.com/openrouter/gateway-go/internal/server"
+	"github.com/openrouter/gateway-go/internal/shared/config"
+	"github.com/openrouter/gateway-go/internal/shared/observability"
+	"github.com/openrouter/gateway-go/internal/api/server"
 )
 
 var version = "dev" // injected via -ldflags

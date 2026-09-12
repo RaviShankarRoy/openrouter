@@ -9,10 +9,10 @@ from decimal import Decimal
 
 import pytest
 
-from app.infrastructure.providers.bootstrap import register_providers
-from app.infrastructure.providers.gemma_adapter import GemmaAdapter, _PRICING as GEMMA_PRICING
-from app.infrastructure.providers.qwen_adapter import QwenAdapter, _PRICING as QWEN_PRICING
-from app.infrastructure.providers.registry import ProviderRegistry
+from app.repository.providers.bootstrap import register_providers
+from app.repository.providers.gemma_adapter import GemmaAdapter, _PRICING as GEMMA_PRICING
+from app.repository.providers.qwen_adapter import QwenAdapter, _PRICING as QWEN_PRICING
+from app.repository.providers.registry import ProviderRegistry
 
 
 @pytest.fixture(autouse=True)

@@ -47,7 +47,7 @@ PROTO_FILES := \
   $(PROTO_DIR)/routing/v1/routing.proto \
   $(PROTO_DIR)/usage/v1/usage.proto
 PY_VENV := backend-python/.venv/bin/python
-PY_GEN := backend-python/app/infrastructure/grpc/gen
+PY_GEN := backend-python/app/repository/grpc/gen
 
 .PHONY: codegen
 codegen: proto codegen-frontend ## Run all code generators (proto + openapi)
@@ -60,7 +60,7 @@ codegen-frontend: ## Generate OpenAPI TypeScript types for the frontend
 proto: proto-go proto-py ## Generate gRPC stubs for Go and Python
 	@echo "proto: codegen complete"
 
-proto-go: ## Generate Go gRPC stubs (output: gateway-go/internal/proto/...)
+proto-go: ## Generate Go gRPC stubs (output: gateway-go/internal/repository/proto/...)
 	@test -x $$HOME/go/bin/protoc-gen-go      || { echo "Missing: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest"; exit 1; }
 	@test -x $$HOME/go/bin/protoc-gen-go-grpc || { echo "Missing: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest"; exit 1; }
 	@PATH="$$HOME/go/bin:$$PATH" $(PY_VENV) -m grpc_tools.protoc \
@@ -69,7 +69,7 @@ proto-go: ## Generate Go gRPC stubs (output: gateway-go/internal/proto/...)
 	  --go-grpc_out=. --go-grpc_opt=module=github.com/openrouter \
 	  $(PROTO_FILES)
 
-proto-py: ## Generate Python gRPC stubs (output: backend-python/app/infrastructure/grpc/gen/...)
+proto-py: ## Generate Python gRPC stubs (output: backend-python/app/repository/grpc/gen/...)
 	@mkdir -p $(PY_GEN)
 	@$(PY_VENV) -m grpc_tools.protoc \
 	  -I $(PROTO_DIR) \
@@ -80,12 +80,12 @@ proto-py: ## Generate Python gRPC stubs (output: backend-python/app/infrastructu
 	       $(PY_GEN)/auth/__init__.py    $(PY_GEN)/auth/v1/__init__.py \
 	       $(PY_GEN)/routing/__init__.py $(PY_GEN)/routing/v1/__init__.py \
 	       $(PY_GEN)/usage/__init__.py   $(PY_GEN)/usage/v1/__init__.py
-	@sed -i 's|^from auth\.v1 import|from app.infrastructure.grpc.gen.auth.v1 import|'       $(PY_GEN)/auth/v1/auth_pb2_grpc.py       2>/dev/null || true
-	@sed -i 's|^from routing\.v1 import|from app.infrastructure.grpc.gen.routing.v1 import|' $(PY_GEN)/routing/v1/routing_pb2_grpc.py 2>/dev/null || true
-	@sed -i 's|^from usage\.v1 import|from app.infrastructure.grpc.gen.usage.v1 import|'     $(PY_GEN)/usage/v1/usage_pb2_grpc.py     2>/dev/null || true
+	@sed -i 's|^from auth\.v1 import|from app.repository.grpc.gen.auth.v1 import|'       $(PY_GEN)/auth/v1/auth_pb2_grpc.py       2>/dev/null || true
+	@sed -i 's|^from routing\.v1 import|from app.repository.grpc.gen.routing.v1 import|' $(PY_GEN)/routing/v1/routing_pb2_grpc.py 2>/dev/null || true
+	@sed -i 's|^from usage\.v1 import|from app.repository.grpc.gen.usage.v1 import|'     $(PY_GEN)/usage/v1/usage_pb2_grpc.py     2>/dev/null || true
 
 proto-clean: ## Remove generated proto files
-	rm -rf gateway-go/internal/proto $(PY_GEN)
+	rm -rf gateway-go/internal/repository/proto $(PY_GEN)
 
 # ---------- Database ----------
 

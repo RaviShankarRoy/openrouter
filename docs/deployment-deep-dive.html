@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shipping the Gateway — Docker &amp; Kubernetes from Zero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --paper: #F5F7F9;
+    --ink: #182430;
+    --muted: #5B6C79;
+    --accent: #0F7B85;
+    --accent-soft: #0F7B8514;
+    --hazard: #A8590E;
+    --hazard-soft: #A8590E12;
+    --card: #FFFFFF;
+    --line: #D9E1E7;
+    --chip-bg: #E8EEF2;
+    --code-bg: #0E1A21;
+    --code-ink: #D6E4EB;
+    --code-accent: #7FD0D8;
+    --code-comment: #6E8896;
+    --code-str: #C9B47F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0D151B;
+      --ink: #DCE6EC;
+      --muted: #8DA1AE;
+      --accent: #45B8C2;
+      --accent-soft: #45B8C21A;
+      --hazard: #E0A057;
+      --hazard-soft: #E0A05714;
+      --card: #131F27;
+      --line: #233440;
+      --chip-bg: #1A2932;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 1.04rem;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+  }
+  .wrap { max-width: 48rem; margin: 0 auto; }
+
+  h1, h2, h3, h4 {
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 { font-size: clamp(2.1rem, 5.5vw, 3rem); font-weight: 800; letter-spacing: -0.015em; }
+  h2 { font-size: 1.55rem; font-weight: 700; margin: 0 0 0.9rem; }
+  h3 { font-size: 1.15rem; font-weight: 700; margin: 2.2rem 0 0.6rem; }
+  h4 { font-size: 0.98rem; font-weight: 700; margin: 1.6rem 0 0.4rem; }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  strong { font-weight: 600; }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.8rem;
+  }
+  header.hero { padding: 4rem 0 2.5rem; border-bottom: 2px solid var(--ink); margin-bottom: 2.5rem; }
+  .hero .lede { font-size: 1.15rem; color: var(--muted); max-width: 42rem; margin-top: 1.1rem; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.5rem; }
+  .chip {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.72rem;
+    background: var(--chip-bg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 0.22rem 0.55rem;
+    white-space: nowrap;
+  }
+
+  nav.toc { margin: 0 0 3.5rem; }
+  .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr)); gap: 0.6rem; }
+  .toc-grid a {
+    display: block; background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+    padding: 0.7rem 0.85rem; text-decoration: none; color: var(--ink);
+    font-family: "Archivo", sans-serif; font-size: 0.9rem; font-weight: 600;
+  }
+  .toc-grid a:hover { border-color: var(--accent); }
+  .toc-grid .n { font-family: "JetBrains Mono", monospace; font-size: 0.68rem; color: var(--accent); display: block; margin-bottom: 0.15rem; font-weight: 600; letter-spacing: 0.08em; }
+
+  section { margin: 0 0 4rem; scroll-margin-top: 1.5rem; }
+  .part-head { border-top: 2px solid var(--ink); padding-top: 1.1rem; margin-bottom: 1.4rem; }
+  .part-head .eyebrow { margin-bottom: 0.4rem; }
+
+  code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.83em;
+    background: var(--chip-bg);
+    border-radius: 3px;
+    padding: 0.08em 0.32em;
+  }
+  .codeblock { margin: 1.25rem 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+  .codeblock .bar {
+    font-family: "JetBrains Mono", monospace; font-size: 0.7rem; letter-spacing: 0.05em;
+    background: var(--chip-bg); color: var(--muted); padding: 0.4rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .codeblock pre {
+    margin: 0; background: var(--code-bg); color: var(--code-ink);
+    padding: 0.9rem 1rem; overflow-x: auto;
+    font-family: "JetBrains Mono", monospace; font-size: 0.8rem; line-height: 1.55;
+  }
+  .codeblock pre .c { color: var(--code-comment); }
+  .codeblock pre .k { color: var(--code-accent); }
+  .codeblock pre .s { color: var(--code-str); }
+
+  .note, .landmine, .exercise, .try {
+    border-radius: 5px; padding: 0.9rem 1.1rem; margin: 1.25rem 0; font-size: 0.97rem;
+  }
+  .note { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+  .landmine { background: var(--hazard-soft); border-left: 3px solid var(--hazard); }
+  .exercise { border: 1.5px dashed var(--line); background: var(--card); }
+  .try { background: var(--card); border: 1px solid var(--accent); }
+  .note .tag, .landmine .tag, .exercise .tag, .try .tag {
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; display: block; margin-bottom: 0.35rem;
+  }
+  .note .tag { color: var(--accent); }
+  .landmine .tag { color: var(--hazard); }
+  .exercise .tag { color: var(--muted); }
+  .try .tag { color: var(--accent); }
+  .note p:last-child, .landmine p:last-child, .exercise p:last-child, .try p:last-child { margin-bottom: 0; }
+  .try .codeblock, .exercise .codeblock { margin: 0.6rem 0 0.4rem; }
+
+  .tablewrap { overflow-x: auto; margin: 1.25rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th {
+    font-family: "Archivo", sans-serif; font-size: 0.78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em; text-align: left;
+    padding: 0.5rem 0.8rem; border-bottom: 2px solid var(--ink); white-space: nowrap;
+  }
+  td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td code { white-space: nowrap; }
+
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1rem; }
+  li { margin-bottom: 0.4rem; }
+  li::marker { color: var(--accent); }
+  dl dt { font-weight: 600; font-family: "Archivo", sans-serif; font-size: 0.95rem; margin-top: 0.9rem; }
+  dl dt code { font-weight: 400; }
+  dl dd { margin: 0.15rem 0 0 0; }
+
+  .lab { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1.4rem 1.5rem; margin: 1.5rem 0; }
+  .lab h3 { margin-top: 0; }
+  .lab .goal { color: var(--muted); font-style: italic; margin-bottom: 1rem; }
+
+  /* simple box diagrams that work offline */
+  .diagram { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1.2rem; margin: 1.5rem 0; overflow-x: auto; }
+  .diagram .row { display: flex; gap: 0.6rem; align-items: stretch; flex-wrap: nowrap; margin-bottom: 0.6rem; }
+  .diagram .row:last-child { margin-bottom: 0; }
+  .dbox {
+    border: 1.5px solid var(--ink); border-radius: 4px; padding: 0.45rem 0.7rem;
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; text-align: center;
+    min-width: 6rem; flex: 1; background: var(--paper);
+  }
+  .dbox.accent { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .dbox.soft { border-style: dashed; color: var(--muted); }
+  .darrow { align-self: center; color: var(--muted); font-family: "JetBrains Mono", monospace; font-size: 0.8rem; white-space: nowrap; }
+  .dlabel { font-family: "Archivo", sans-serif; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 0.5rem; }
+
+  .filemap { list-style: none; padding: 0; counter-reset: fm; }
+  .filemap li { counter-increment: fm; display: flex; gap: 0.8rem; align-items: baseline; padding: 0.45rem 0; border-bottom: 1px solid var(--line); margin: 0; }
+  .filemap li::before {
+    content: counter(fm, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; color: var(--accent); font-weight: 600;
+  }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">OpenRouter Gateway · From Zero to Deployed</p>
+  <h1>Shipping the Gateway</h1>
+  <p class="lede">Docker and Kubernetes explained from first principles — no prior container knowledge assumed — using this repo's real files as the textbook, and <strong>minikube on this one machine</strong> as the lab bench.</p>
+  <div class="hero-meta">
+    <span class="chip">audience: complete Docker beginner</span>
+    <span class="chip">lab tool: minikube</span>
+    <span class="chip">local: docker 29.7 ✓</span>
+    <span class="chip">to install: kubectl · minikube · helm</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="toc-grid">
+    <a href="#ch1"><span class="n">CHAPTER 1</span>Why containers exist</a>
+    <a href="#ch2"><span class="n">CHAPTER 2</span>Images, containers, layers</a>
+    <a href="#ch3"><span class="n">CHAPTER 3</span>The Dockerfile, line by line</a>
+    <a href="#ch4"><span class="n">CHAPTER 4</span>Docker Compose</a>
+    <a href="#ch5"><span class="n">CHAPTER 5</span>Why Kubernetes</a>
+    <a href="#ch6"><span class="n">CHAPTER 6</span>Kubernetes objects, via this repo</a>
+    <a href="#ch7"><span class="n">CHAPTER 7</span>Environments: kustomize &amp; Helm</a>
+    <a href="#labs"><span class="n">CHAPTER 8</span>Labs on minikube</a>
+    <a href="#landmines"><span class="n">APPENDIX A</span>Repo-specific landmines</a>
+    <a href="#glossary"><span class="n">APPENDIX B</span>Glossary</a>
+    <a href="#cheat"><span class="n">APPENDIX C</span>Command cheat sheets</a>
+    <a href="#reading"><span class="n">APPENDIX D</span>A reading order</a>
+  </div>
+</nav>
+
+<section>
+  <p><strong>How to read this.</strong> Chapters build on each other — read them in order, and do the <em>Try it now</em> boxes as you go; they need only what's already installed at that point. Colored boxes mean: teal border = try it on your machine right now; teal background = a concept worth pausing on; amber = a landmine (something that will genuinely bite); dashed = an exercise to reason through. Everything in this guide was read from the repo's working tree — file paths like <code>gateway-go/Dockerfile</code> refer to real files you can open beside this page.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="ch1">
+  <div class="part-head">
+    <p class="eyebrow">Chapter 1</p>
+    <h2>Why containers exist</h2>
+  </div>
+
+  <h3>The problem Docker solves</h3>
+  <p>Imagine handing this repo's Python backend to a friend. For it to run, their machine needs: Python 3.12 exactly, the <code>libpq5</code> system library for Postgres, ~40 pip packages at the exact versions in the lockfile, the right environment variables, and a working directory laid out just so. If any piece differs — Python 3.11, a missing system library, a newer package — it breaks, and you get the oldest sentence in software: <em>"but it works on my machine."</em></p>
+  <p>A <strong>container</strong> ends that sentence. It bundles the application <em>together with</em> its entire userspace world — the OS files, the language runtime, the libraries, the exact dependency versions — into one sealed, portable unit. The unit runs identically on your laptop, your friend's laptop, and a cloud server, because everything it needs travels inside it. The only thing it borrows from the host is the Linux kernel itself.</p>
+
+  <h3>Container vs virtual machine</h3>
+  <p>You may have used VirtualBox or a cloud VM. A <strong>virtual machine</strong> emulates an entire computer — virtual CPU, virtual disk, and a full guest operating system with its own kernel. That's heavy: gigabytes of disk, minutes to boot, and a whole OS to patch per VM.</p>
+  <p>A container is much lighter. It is just a <strong>normal Linux process</strong> on the host, but wrapped in two kernel features: <em>namespaces</em> (the process gets its own private view of the filesystem, network, process list, hostname — it genuinely cannot see the rest of your machine) and <em>cgroups</em> (the kernel caps how much CPU and memory it may use). No guest OS, no emulation. That's why a container starts in milliseconds and why this repo's Go gateway image is under 30&nbsp;MB while a VM doing the same job would be gigabytes.</p>
+  <div class="diagram">
+    <p class="dlabel">Virtual machine vs container</p>
+    <div class="row">
+      <div class="dbox soft">VM: App → Guest OS → Hypervisor → Host OS → Hardware</div>
+    </div>
+    <div class="row">
+      <div class="dbox accent">Container: App (+ its libraries) → shared Host kernel → Hardware</div>
+    </div>
+  </div>
+
+  <h3>What "Docker" actually is</h3>
+  <p>Docker is four things that people blur into one word:</p>
+  <ul>
+    <li>The <strong>Docker daemon</strong> (<code>dockerd</code>) — a background service on your machine that builds images and runs containers.</li>
+    <li>The <strong>Docker CLI</strong> (<code>docker</code>) — the command you type; it just sends requests to the daemon.</li>
+    <li>The <strong>image format</strong> — the standardized package (now an open standard, OCI) that any container tool can run.</li>
+    <li>The <strong>registry</strong> — a server that stores and serves images, like GitHub for code. Docker Hub is the default public one; this repo's manifests reference a private one, <code>ghcr.io</code> (GitHub Container Registry).</li>
+  </ul>
+
+  <div class="try"><span class="tag">Try it now</span>
+    <p>Your machine already has Docker 29.7. Prove the whole pipeline works in one command:</p>
+    <div class="codeblock"><div class="bar">shell</div><pre>
+docker run hello-world</pre></div>
+    <p>Unpack what just happened: the CLI asked the daemon to run an image called <code>hello-world</code>; the daemon didn't have it locally, so it <em>pulled</em> it from Docker Hub, created a container from it, ran its program (which prints the message), and the container exited. Now try an interactive one — a full Python environment you never installed:</p>
+    <div class="codeblock"><div class="bar">shell</div><pre>
+docker run -it --rm python:3.12-slim python
+<span class="c"># you're now inside a Python 3.12 REPL running in a container.</span>
+<span class="c"># type exit() — the --rm flag deletes the container when it exits.</span></pre></div>
+    <p><code>-i</code> keeps stdin open, <code>-t</code> gives you a terminal, <code>--rm</code> cleans up afterwards. That <code>python:3.12-slim</code> image is the exact base this repo's backend is built on.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="ch2">
+  <div class="part-head">
+    <p class="eyebrow">Chapter 2</p>
+    <h2>Images, containers, layers</h2>
+  </div>
+
+  <h3>Image vs container — the one distinction that matters</h3>
+  <p>An <strong>image</strong> is a frozen, read-only snapshot: a complete filesystem (OS files + your app + its dependencies) plus metadata (which command to run, which user, which ports it expects). It's a <em>recipe result</em>, sitting on disk, doing nothing.</p>
+  <p>A <strong>container</strong> is a running instance of an image — the image's filesystem brought to life as a process, plus a thin writable layer on top for anything the process writes. One image can spawn many containers, the same way one class spawns many objects, or one <code>.exe</code> can be launched many times. Delete a container and the image is untouched; anything the container wrote (that wasn't in a volume — Chapter 4) is gone with it.</p>
+
+  <h3>Names and tags</h3>
+  <p>An image name like <code>ghcr.io/openrouter/backend-python:0.1.0</code> reads right-to-left: <em>tag</em> <code>0.1.0</code> (a version label), <em>repository</em> <code>backend-python</code>, <em>namespace</em> <code>openrouter</code>, <em>registry</em> <code>ghcr.io</code>. Omit the registry and Docker Hub is assumed; omit the tag and <code>:latest</code> is assumed. One crucial fact for later: <strong>tags are mutable</strong> — whoever controls the registry can re-point <code>:0.1.0</code> at different content tomorrow. A <em>digest</em> (<code>@sha256:…</code>) is the content's cryptographic hash and can never silently change. This repo's production overlay pins digests for exactly that reason (Chapter 7).</p>
+
+  <h3>Layers — why builds are fast the second time</h3>
+  <p>An image isn't one big blob. It's a stack of <strong>layers</strong>, where each layer is the filesystem diff produced by one build step. Layers are content-addressed and shared: if five images all start from <code>python:3.12-slim</code>, that base is stored once on disk and downloaded once. And when an image is rebuilt, any step whose inputs haven't changed reuses its cached layer instead of re-running. Nearly every design decision in this repo's Dockerfiles is arranged around this cache — you'll see it in Chapter 3 and <em>feel</em> it in Lab 1.</p>
+
+  <h3>The lifecycle</h3>
+  <div class="diagram">
+    <p class="dlabel">Image lifecycle</p>
+    <div class="row">
+      <div class="dbox">Dockerfile</div><div class="darrow">→ build →</div>
+      <div class="dbox">image</div><div class="darrow">→ tag / push →</div>
+      <div class="dbox">registry</div><div class="darrow">→ pull →</div>
+      <div class="dbox accent">container</div>
+    </div>
+  </div>
+  <p>You <em>build</em> an image from a Dockerfile, <em>tag</em> it with a name, <em>push</em> it to a registry, and any machine anywhere can <em>pull</em> and <em>run</em> it. That last hop — a server pulling an image and running it — is, at heart, all Kubernetes does, just automated across many servers with a lot of judgment attached.</p>
+
+  <div class="try"><span class="tag">Try it now</span>
+    <div class="codeblock"><div class="bar">shell</div><pre>
+docker image ls                     <span class="c"># images on your disk (the frozen snapshots)</span>
+docker ps                           <span class="c"># RUNNING containers</span>
+docker ps -a                        <span class="c"># includes exited ones — see your dead hello-world?</span>
+docker history python:3.12-slim     <span class="c"># the layer stack of the image, biggest steps visible</span>
+docker container prune              <span class="c"># delete all exited containers (images stay)</span></pre></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="ch3">
+  <div class="part-head">
+    <p class="eyebrow">Chapter 3</p>
+    <h2>The Dockerfile, line by line</h2>
+  </div>
+  <p>A <strong>Dockerfile</strong> is the build recipe: a plain-text list of instructions the daemon executes top to bottom, each producing one layer. Before reading this repo's three, learn the instruction vocabulary once:</p>
+
+  <dl>
+    <dt><code>FROM &lt;image&gt;</code></dt><dd>Start from an existing image as the base. Every Dockerfile begins here. <code>FROM x AS name</code> names a <em>stage</em> — more below.</dd>
+    <dt><code>WORKDIR /path</code></dt><dd>Set the current directory for all following instructions (creates it if missing).</dd>
+    <dt><code>COPY src dst</code></dt><dd>Copy files from your project folder (the "build context") into the image. <code>COPY --from=stage</code> copies from an earlier build stage instead.</dd>
+    <dt><code>RUN &lt;command&gt;</code></dt><dd>Execute a shell command <em>at build time</em> (install packages, compile code) and bake the result into a layer.</dd>
+    <dt><code>ENV KEY=value</code></dt><dd>Set an environment variable that will exist inside every container run from this image.</dd>
+    <dt><code>ARG KEY=default</code></dt><dd>A <em>build-time-only</em> variable, passed with <code>docker build --build-arg</code>. Unlike ENV, it doesn't exist in the running container.</dd>
+    <dt><code>EXPOSE 8080</code></dt><dd>Pure documentation: "this app listens on 8080." It does <em>not</em> open the port — publishing ports happens at run time (<code>-p 8080:8080</code>).</dd>
+    <dt><code>USER 65532</code></dt><dd>Which user the container's process runs as. Default is root — fine at build time, a real risk at run time, hence every image here switches to an unprivileged user.</dd>
+    <dt><code>ENTRYPOINT</code> / <code>CMD</code></dt><dd>What runs when the container starts. Rule of thumb: ENTRYPOINT is the fixed program, CMD is its default arguments (or the default command if no ENTRYPOINT). <code>docker run image something-else</code> overrides CMD but not ENTRYPOINT — which is why Kubernetes can reuse one backend image for three different workloads later.</dd>
+    <dt><code>HEALTHCHECK</code></dt><dd>A command Docker runs periodically inside the container to decide if it's "healthy". Compose can wait on it. (Foreshadowing: Kubernetes ignores this entirely and brings its own mechanism.)</dd>
+  </dl>
+
+  <div class="note"><span class="tag">Concept · multi-stage builds</span>
+    <p>Building software needs heavy tools — compilers, headers, package managers. <em>Running</em> it doesn't. A <strong>multi-stage build</strong> uses one stage (with all the tools) to compile, then starts a fresh, minimal final stage and copies in only the finished output. The tools never ship. Every production image in this repo does this; it's the single most important Dockerfile pattern.</p>
+  </div>
+
+  <h3>3.1 · <code>gateway-go/Dockerfile</code> — the minimal extreme</h3>
+  <div class="codeblock"><div class="bar">gateway-go/Dockerfile (annotated)</div><pre>
+<span class="k">FROM</span> golang:1.24-alpine <span class="k">AS</span> build   <span class="c"># stage 1: has the whole Go toolchain</span>
+<span class="k">WORKDIR</span> /src
+<span class="k">COPY</span> go.mod go.sum ./              <span class="c"># dependency lists FIRST…</span>
+<span class="k">RUN</span> go mod download                <span class="c"># …so this slow download layer caches</span>
+<span class="k">COPY</span> . .                           <span class="c"># source LAST — edits only invalidate from here down</span>
+<span class="k">ARG</span> VERSION=dev
+<span class="k">RUN</span> CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags <span class="s">"-s -w -X main.version=${VERSION}"</span> \
+    -o /out/gateway ./cmd/gateway
+
+<span class="k">FROM</span> scratch                       <span class="c"># stage 2: literally an EMPTY filesystem</span>
+<span class="k">COPY</span> --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+<span class="k">COPY</span> --from=build /out/gateway /gateway
+<span class="k">COPY</span> --from=build /src/configs /configs
+<span class="k">EXPOSE</span> 8080 9091
+<span class="k">USER</span> 65532:65532
+<span class="k">ENTRYPOINT</span> [<span class="s">"/gateway"</span>]</pre></div>
+  <p>What each decision means, and why:</p>
+  <ul>
+    <li><strong>Why copy <code>go.mod</code>/<code>go.sum</code> before the source?</strong> The layer cache. Dependencies change rarely; source changes constantly. Ordered this way, editing a <code>.go</code> file skips the download layer entirely on rebuild. Reversed, every rebuild would re-download every module. This deps-then-source order appears in all three Dockerfiles — it is <em>the</em> build-speed lever.</li>
+    <li><strong>Why <code>CGO_ENABLED=0</code>?</strong> It tells Go to produce a fully <em>static</em> binary — one file containing everything, no dependency on the C library. That's what makes the next line possible.</li>
+    <li><strong>Why <code>FROM scratch</code>?</strong> <code>scratch</code> is a zero-byte base — no shell, no package manager, no OS files at all. Only a static binary can survive there. The payoff: a final image under 30&nbsp;MB, near-instant pulls, and essentially nothing for an attacker to use (you can't even open a shell in it — Lab 6 shows the Kubernetes trick for debugging such a container).</li>
+    <li><strong>Why copy CA certificates?</strong> Because scratch has <em>nothing</em> — including the root certificates every HTTPS client needs to verify servers. Without this line, the gateway's outbound TLS calls to OpenAI/Anthropic would fail. The classic scratch-image gotcha.</li>
+    <li><strong>Why <code>-ldflags "-s -w"</code> and <code>-X main.version</code>?</strong> <code>-s -w</code> strips debug symbols (smaller binary). <code>-X</code> writes a value into a Go variable at compile time — combined with <code>ARG VERSION</code>, CI stamps each build with its release version without touching code.</li>
+    <li><strong>Why <code>USER 65532</code>, a bare number?</strong> Containers run as root unless told otherwise; if a process is compromised, root inside the container is a much better beachhead than an unprivileged user. 65532 is the conventional "nonroot" UID from Google's distroless images. It's numeric on purpose: Kubernetes' <code>runAsNonRoot</code> check (Chapter 6) can only verify a numeric UID — with a named user it can't prove non-rootness.</li>
+  </ul>
+
+  <h3>3.2 · <code>backend-python/Dockerfile</code> — the builder-venv pattern</h3>
+  <div class="codeblock"><div class="bar">backend-python/Dockerfile (annotated)</div><pre>
+<span class="k">FROM</span> python:3.12-slim <span class="k">AS</span> builder
+<span class="k">RUN</span> apt-get install … build-essential gcc libpq-dev   <span class="c"># compilers + Postgres headers</span>
+<span class="k">RUN</span> python -m venv /opt/venv                          <span class="c"># isolated env at a known path</span>
+<span class="k">ENV</span> PATH=<span class="s">"/opt/venv/bin:$PATH"</span>
+<span class="k">COPY</span> pyproject.toml ./
+<span class="k">RUN</span> pip install -e .                                  <span class="c"># deps first (cache, again)</span>
+<span class="k">COPY</span> . .
+
+<span class="k">FROM</span> python:3.12-slim <span class="k">AS</span> runtime
+<span class="k">RUN</span> apt-get install … libpq5 curl && useradd --uid 65532 … app
+<span class="k">COPY</span> --from=builder /opt/venv /opt/venv               <span class="c"># finished packages only</span>
+<span class="k">COPY</span> --from=builder /build /app
+<span class="k">USER</span> 65532
+<span class="k">HEALTHCHECK</span> --interval=10s … CMD curl -fsS http://localhost:8000/health
+<span class="k">CMD</span> [<span class="s">"gunicorn"</span>, <span class="s">"app.main:app"</span>, <span class="s">"--workers"</span>, <span class="s">"4"</span>, …]</pre></div>
+  <p>Python can't compile to one static file, so the trick is different: build all the packages in a stage that has compilers, into a <strong>virtualenv at a fixed path</strong>, then copy just that venv into a clean stage. Notice the mirror-image pair: the builder installs <code>libpq-<strong>dev</strong></code> (headers, needed to <em>compile</em> the Postgres driver), the runtime installs only <code>libpq<strong>5</strong></code> (the shared library needed to <em>run</em> it). No compiler ever ships to production.</p>
+  <ul>
+    <li><strong><code>PYTHONUNBUFFERED=1</code></strong> makes print/log output flush immediately instead of buffering — without it, <code>docker logs</code> shows nothing until 4&nbsp;KB accumulates, which reads as "my app is hung" when it isn't.</li>
+    <li><strong>The HEALTHCHECK</strong> is why <code>curl</code> is installed in the runtime at all — a deliberate trade of a few MB for health-gating in Compose (Chapter 4). The Go image skipped this; Kubernetes won't care either way, because <strong>Kubernetes ignores Dockerfile HEALTHCHECKs completely</strong> and uses its own probes (Chapter 6). Knowing which layer honors which health mechanism is a classic point of confusion — settle it now.</li>
+    <li><strong>gunicorn with 4 uvicorn workers</strong> runs four copies of the FastAPI app in separate processes — Python's way of using multiple CPU cores for one service.</li>
+  </ul>
+
+  <h3>3.3 · <code>frontend-web/Dockerfile</code> — three stages</h3>
+  <p>The Next.js build splits into <em>deps → builder → runner</em>. Why a third stage? So the huge <code>node_modules</code> install (from <code>pnpm install --frozen-lockfile</code>) caches independently: edit a React component and the rebuild reuses the deps layer, re-running only the app build. The runner stage then copies Next.js's <strong>standalone output</strong> — a self-pruned bundle containing only the modules the app actually imports — which is how a Node app stays under the 200&nbsp;MB target instead of shipping a 1&nbsp;GB <code>node_modules</code>.</p>
+  <p>One subtle line worth understanding: <code>COPY --chown=nextjs:nodejs</code> sets file ownership <em>during</em> the copy. The naive alternative — copy, then <code>RUN chown -R</code> — would duplicate every file into a second layer (layers are diffs; changing ownership rewrites the file in the new layer), roughly doubling that part of the image.</p>
+
+  <div class="exercise"><span class="tag">Prove it to yourself</span>
+    <p>1) <code>EXPOSE 8080</code> doesn't open a port. So run <code>docker run --rm -p 8080:8080 openrouter/gateway-go:dev</code> after Lab 1 and explain what each side of <code>-p host:container</code> means.<br>
+    2) Why does the gateway image bake <code>/configs</code> in, when Kubernetes will later mount config from outside? (Hint: what should plain <code>docker run</code> do with no extra setup?)<br>
+    3) In the backend runtime stage, what would break if the venv had been created at <code>/usr/local</code> in the builder instead of <code>/opt/venv</code>? (Hint: the COPY works because both stages share the same Python at the same path.)</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="ch4">
+  <div class="part-head">
+    <p class="eyebrow">Chapter 4</p>
+    <h2>Docker Compose — many containers, one file</h2>
+  </div>
+  <p>This project isn't one container. Even in development it's Postgres, Redis, NATS, MinIO, Jaeger, Ollama, plus six app services. Starting each with a long <code>docker run</code> command — with the right ports, volumes, environment, and startup order — would be unmanageable. <strong>Docker Compose</strong> is the answer for a single machine: you declare all services in YAML, and <code>docker compose up</code> creates the containers, a shared private network, and the volumes, in dependency order.</p>
+
+  <h3>The vocabulary, via this repo's files</h3>
+  <dl>
+    <dt>Service</dt><dd>One container definition (image, ports, env, volumes). In <code>docker-compose.yml</code>: <code>postgres</code>, <code>redis</code>, <code>nats</code>, <code>minio</code>, <code>jaeger</code>, <code>ollama</code>.</dd>
+    <dt>Network &amp; DNS</dt><dd>Compose puts all services on one private network where <strong>each service's name is a hostname</strong>. That's why the backend's database URL is <code>…@postgres:5432/…</code> and the gateway finds the backend at <code>backend:50051</code> — no IP addresses, ever. Hold onto this idea: Kubernetes Services (Chapter 6) are the same concept scaled up.</dd>
+    <dt>Ports</dt><dd><code>"5432:5432"</code> publishes container port 5432 onto your host's 5432, so tools on your laptop can reach into the container. Between containers on the compose network, publishing isn't needed at all.</dd>
+    <dt>Volumes</dt><dd>Containers are disposable — their writable layer dies with them. A <strong>named volume</strong> (<code>pgdata:/var/lib/postgresql/data</code>) is Docker-managed storage that <em>outlives</em> containers: destroy and recreate Postgres and your data survives. A <strong>bind mount</strong> (<code>./backend-python:/app</code>) maps a host folder into the container — this is how the dev setup gets hot reload: you edit a file on your machine, the container sees it instantly.</dd>
+    <dt>Healthcheck &amp; <code>depends_on</code></dt><dd>Every infra service defines a <code>healthcheck</code> (e.g. <code>pg_isready</code> for Postgres). App services declare <code>depends_on: postgres: condition: service_healthy</code> — "don't start me until Postgres <em>answers queries</em>," not merely "until its container exists" (<code>service_started</code>). Started ≠ ready is a distinction that returns with force in Kubernetes.</dd>
+  </dl>
+
+  <h3>The two-file overlay pattern</h3>
+  <p>This repo splits Compose across files on purpose — infrastructure in one, app services in another — and merges them at the command line:</p>
+  <div class="codeblock"><div class="bar">shell</div><pre>
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+<span class="c"># or the shortcut:</span>  make up-docker
+<span class="c"># see the merged result — the single best way to understand the overlay:</span>
+docker compose -f docker-compose.yml -f docker-compose.dev.yml config | less</pre></div>
+  <p>Later files override/extend earlier ones. Both declare <code>name: openrouter-dev</code>, so they form one project on one network. Why split? You can run just the databases (and run the apps natively via the Procfile) or everything in containers — two documented dev styles in the <code>Makefile</code>. A third file, <code>docker-compose.observability.yml</code>, adds Prometheus + Grafana + Loki + Tempo only when you want them.</p>
+  <p>The dev overlay has a clever caching design worth studying: instead of building images, it runs upstream bases (<code>golang:1.24-alpine</code>, <code>python:3.12-slim</code>, <code>node:20-alpine</code>), bind-mounts the source for hot reload, and installs dependencies into <em>named volumes</em> (<code>go-mod-cache</code>, <code>py-venv</code>, <code>frontend-node-modules</code>). First boot is slow; every boot after is fast, because the volumes persist. Note the coupling it accepts: <code>backend</code>, <code>worker</code>, and <code>beat</code> share the single <code>py-venv</code> volume so pip installs once — the worker literally busy-waits for <code>/opt/venv/bin/celery</code> to appear.</p>
+
+  <div class="landmine"><span class="tag">Landmine</span>
+    <p>All app services load <code>env_file: .env</code> — and this repo's <code>.env</code> currently contains a <strong>real leaked Google OAuth client secret</strong> (<code>GOCSPX-…</code>). Rotate it before any push. And note the principle the production images get right: configuration enters at <em>run time</em> via environment, never baked into the image — the same principle Kubernetes implements with ConfigMaps and Secrets.</p>
+  </div>
+
+  <div class="landmine"><span class="tag">Landmine</span>
+    <p>Postgres's official image runs <code>infrastructure/postgres/init.sql</code> (mounted into <code>/docker-entrypoint-initdb.d/</code>) <strong>only on first initialization of the data volume</strong>. Edit that file later and "nothing happens" — because <code>pgdata</code> already exists. <code>make down-docker-clean</code> (which runs <code>down -v</code>) wipes the volumes and forces re-init.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="ch5">
+  <div class="part-head">
+    <p class="eyebrow">Chapter 5</p>
+    <h2>Why Kubernetes</h2>
+  </div>
+  <p>Compose is excellent — on one machine. Now imagine this gateway in production, and ask what Compose has no answer for:</p>
+  <ul>
+    <li>Traffic needs <strong>50 copies</strong> of the gateway across <strong>many machines</strong>. Which machine runs which copy?</li>
+    <li>A machine <strong>dies at 3am</strong>. Who notices, and who restarts its containers elsewhere?</li>
+    <li>You deploy a new version. How do you replace 50 running copies <strong>without dropping a single request</strong>?</li>
+    <li>Traffic spikes 10×. Who <strong>adds capacity</strong>, and who removes it after?</li>
+    <li>50 gateway copies exist across machines with changing IPs. How does anything <strong>find</strong> them?</li>
+  </ul>
+  <p><strong>Kubernetes (K8s)</strong> is the industry's answer: an orchestrator that turns a fleet of machines into one logical computer that schedules, heals, scales, and connects containers for you.</p>
+
+  <h3>The one idea everything rests on: desired state</h3>
+  <p>You do <em>not</em> give Kubernetes commands ("start a container here"). You hand it a YAML document describing the state you <em>want</em> — "three copies of this image, each needing half a CPU, reachable under this name" — and Kubernetes runs a permanent <strong>reconciliation loop</strong>: measure actual state, compare with desired, fix the difference. A container crashes? Actual (2) ≠ desired (3) → start one. A whole machine dies? Same logic, its pods come back elsewhere. Nobody is paged to restart anything. Every object in Chapter 6 is just a different piece of desired state; every "controller" is just a loop making its piece true.</p>
+
+  <h3>Cluster anatomy</h3>
+  <div class="diagram">
+    <p class="dlabel">A Kubernetes cluster</p>
+    <div class="row">
+      <div class="dbox accent">Control plane — API server · scheduler · controllers · etcd (the desired-state database)</div>
+    </div>
+    <div class="row">
+      <div class="dbox">Node 1 — kubelet + container runtime → runs pods</div>
+      <div class="dbox">Node 2 — kubelet + runtime → pods</div>
+      <div class="dbox">Node 3 — kubelet + runtime → pods</div>
+    </div>
+    <div class="row">
+      <div class="dbox soft">kubectl (your terminal) — talks HTTP to the API server</div>
+    </div>
+  </div>
+  <ul>
+    <li><strong>Control plane</strong> — the brain: the <em>API server</em> (everything talks to it), <em>etcd</em> (stores all the YAML you've applied), the <em>scheduler</em> (decides which node each pod lands on, based on resource requests), and <em>controllers</em> (the reconciliation loops).</li>
+    <li><strong>Nodes</strong> — worker machines. Each runs a <em>kubelet</em> agent that starts/stops containers as instructed and reports back.</li>
+    <li><strong>kubectl</strong> — the CLI you'll live in. <code>kubectl apply -f file.yaml</code> means "make this desired state so"; <code>kubectl get / describe / logs</code> inspect actual state.</li>
+    <li><strong>minikube</strong> — your lab cluster: it runs an entire single-node cluster (control plane + node together) inside a Docker container on this machine. Small, disposable, and API-identical to a 500-node production cluster — which is the whole point: the YAML in this repo doesn't know or care how big the cluster is.</li>
+  </ul>
+
+  <h3>Reading a manifest</h3>
+  <p>Every Kubernetes YAML file ("manifest") has the same four-part skeleton. Learn it once and every file in <code>infrastructure/kubernetes/</code> becomes readable:</p>
+  <div class="codeblock"><div class="bar">anatomy of any manifest</div><pre>
+apiVersion: apps/v1        <span class="c"># which API group/version defines this kind of object</span>
+kind: Deployment           <span class="c"># what type of object this is</span>
+metadata:                  <span class="c"># its name, namespace, and labels (key:value stickers)</span>
+  name: gateway-go
+  labels: { app.kubernetes.io/name: gateway-go }
+spec:                      <span class="c"># the desired state — the entire point of the file</span>
+  …</pre></div>
+  <p><strong>Labels</strong> deserve a sentence: they're arbitrary key:value stickers on objects, and they are how Kubernetes objects find each other. A Deployment manages "pods matching these labels"; a Service routes to "pods matching these labels". No hard links — just label queries (selectors). You'll see <code>app.kubernetes.io/name: gateway-go</code> doing this work all over the repo.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="ch6">
+  <div class="part-head">
+    <p class="eyebrow">Chapter 6</p>
+    <h2>The Kubernetes objects, via this repo</h2>
+  </div>
+  <p>Kubernetes has dozens of object types; this repo uses about twelve, and they're the twelve that matter. For each: <em>what</em> it is, <em>why</em> it exists, and where this repo uses it.</p>
+
+  <h3>6.1 · Pod — the atom</h3>
+  <p>A <strong>Pod</strong> is the smallest deployable unit: one or more containers that share a network identity (one IP, shared <code>localhost</code>) and can share volumes. Usually one container per pod. Crucially: <strong>pods are mortal and disposable</strong>. They are never healed in place — when one dies, a <em>replacement</em> (new name, new IP) is created. Everything else in Kubernetes is built to make that disposability survivable. You'll almost never write a Pod by hand; you write Deployments that stamp them out.</p>
+
+  <h3>6.2 · Deployment — "keep N copies running, and upgrade them gracefully"</h3>
+  <p>A <strong>Deployment</strong> wraps a pod <em>template</em> plus a replica count plus an upgrade strategy. Its controller keeps N pods matching the template alive (self-healing), and when you change the template — a new image version — it performs a <strong>rolling update</strong>: create some new pods, wait until they're ready, retire old ones, repeat. This repo runs five Deployments: <code>gateway-go</code>, <code>backend-python</code>, <code>backend-celery-worker</code>, <code>backend-celery-beat</code>, <code>frontend-web</code>.</p>
+  <p>The gateway's rollout config in <code>infrastructure/kubernetes/base/gateway-go/deployment.yaml</code> is the zero-downtime configuration, worth memorizing:</p>
+  <div class="codeblock"><div class="bar">base/gateway-go/deployment.yaml (excerpt)</div><pre>
+spec:
+  replicas: 3                <span class="c"># desired copies. why 3: survives one node failure + one upgrade surge</span>
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: <span class="s">25%</span>          <span class="c"># may temporarily run EXTRA pods during upgrade…</span>
+      maxUnavailable: <span class="s">0</span>      <span class="c"># …but may NEVER kill an old pod before its replacement is Ready</span></pre></div>
+  <p>Three sibling details in that file complete the graceful story. When a pod is told to die: (1) it's removed from load-balancing <em>and</em> signaled at the same moment, so a <code>preStop</code> hook of <code>sleep 5</code> gives the routing layer a head start — no request lands on a dying pod; (2) then SIGTERM, and the process gets <code>terminationGracePeriodSeconds</code> to finish in-flight work before SIGKILL. The three values in this repo tell you exactly what each service does: gateway 30s (drain streaming responses), backend 60s (drain async tasks), celery worker <strong>300s</strong> (a video job may run minutes).</p>
+
+  <div class="note"><span class="tag">Concept · one image, three workloads</span>
+    <p><code>backend-python</code>, <code>backend-celery-worker</code>, and <code>backend-celery-beat</code> all run the <em>same image</em> — only the container's <code>command</code>/<code>args</code> differ (remember ENTRYPOINT vs CMD from Chapter 3). They're separate Deployments because they scale on different signals and must fail independently. Beat is pinned to <code>replicas: 1</code>: it's a task <em>scheduler</em>, and two of them would enqueue every periodic job twice.</p>
+  </div>
+
+  <h3>6.3 · Probes — how Kubernetes knows your app's actual state</h3>
+  <p>Kubernetes can see that a <em>process</em> is running; it cannot know your app is <em>working</em> unless you tell it how to check. That's what probes are — and this is the mechanism that replaces Docker's HEALTHCHECK. There are three, answering three different questions:</p>
+  <div class="tablewrap">
+  <table>
+    <tr><th>Probe</th><th>Question</th><th>On failure</th><th>Gateway values</th></tr>
+    <tr><td><strong>startup</strong></td><td>has it finished booting?</td><td>keep waiting (other probes paused)</td><td><code>/health</code>, up to 30×1s</td></tr>
+    <tr><td><strong>readiness</strong></td><td>should it get traffic <em>right now</em>?</td><td>remove from load balancing — <em>no restart</em></td><td><code>/ready</code>, every 5s, 3 fails</td></tr>
+    <tr><td><strong>liveness</strong></td><td>is it wedged beyond recovery?</td><td>restart the container</td><td><code>/health</code>, every 10s, 3 fails</td></tr>
+  </table>
+  </div>
+  <p>Why three? Because the failure responses must differ. If the backend briefly loses Redis, the right move is "stop sending it traffic until it recovers" (readiness) — restarting it (liveness) would turn a blip into a rolling outage. The startup probe exists so a slow-booting app (Python: up to 60s here) doesn't need a dangerously lax liveness probe forever. And the celery worker shows the non-HTTP variant: an <code>exec</code> probe that runs <code>celery inspect ping</code> inside the container — the escape hatch for anything that doesn't serve HTTP. In Lab 4 you'll break a readiness probe and a liveness probe separately and watch the two very different outcomes.</p>
+
+  <h3>6.4 · Resources — requests vs limits</h3>
+  <div class="codeblock"><div class="bar">base/gateway-go/deployment.yaml (excerpt)</div><pre>
+resources:
+  requests: { cpu: <span class="s">500m</span>, memory: <span class="s">256Mi</span> }   <span class="c"># 500m = 0.5 CPU cores. RESERVED for scheduling</span>
+  limits:
+    memory: <span class="s">512Mi</span>                           <span class="c"># hard cap — exceed it and the pod is OOM-killed</span>
+    <span class="c"># note: NO cpu limit — deliberate, see below</span></pre></div>
+  <p><strong>Requests</strong> are what the scheduler reserves when placing pods on nodes — promises used for bin-packing. <strong>Limits</strong> are enforcement: exceed a memory limit and the kernel kills the container (<code>OOMKilled</code> — you'll cause one in Lab 6); exceed a CPU limit and the kernel <em>throttles</em> the process. Throttling adds latency spikes, which is precisely why this latency-critical gateway sets <em>no</em> CPU limit while capping memory hard — an opinionated, defensible trade the manifest explains in its own comments. The backend and worker, less latency-sensitive, do carry CPU limits.</p>
+
+  <h3>6.5 · Service — a stable name for mortal pods</h3>
+  <p>Pods die and return with new IPs, and there are many replicas. A <strong>Service</strong> gives a <em>set of pods</em> (chosen by label selector) one stable virtual IP and one stable DNS name, load-balancing across whichever pods are currently <em>ready</em> — this is where the readiness probe cashes out. Any pod in the cluster can reach the backend at <code>backend-python:50051</code>; it's Compose's service-name DNS, generalized across machines. The Services here are type <code>ClusterIP</code> (reachable only inside the cluster — correct for internal tiers) with <em>named</em> ports (<code>http</code>, <code>grpc</code>, <code>metrics</code>) so other objects reference the name, not the number.</p>
+
+  <h3>6.6 · ConfigMap &amp; Secret — configuration lives outside the image</h3>
+  <p>The same image must run in dev, staging, and prod with different settings — so settings can't be baked in. A <strong>ConfigMap</strong> holds non-sensitive key-values or whole files; a <strong>Secret</strong> holds sensitive ones (kept separate so access can be restricted and handled more carefully). Pods consume both as environment variables or mounted files. In this repo: the gateway's provider catalogue is a ConfigMap mounted read-only at <code>/etc/gateway/providers.yaml</code>; the Postgres DSN, Redis URL, JWT secret, and Stripe keys arrive via <code>secretKeyRef</code> from Secrets named <code>openrouter-postgres</code>, <code>openrouter-redis</code>, <code>openrouter-app</code>, <code>openrouter-stripe</code>.</p>
+  <p>Where do those Secrets come from? Not from a file in git — that's the point. <code>base/secrets.yaml</code> declares <code>ExternalSecret</code> objects: instructions for the <em>External Secrets Operator</em> (an add-on) to fetch real values from a <strong>Vault</strong> server and materialize them as cluster Secrets, refreshing periodically. Secret material never touches the repo; rotation happens in Vault with no redeploy. Elegant in production — and a hurdle for your local cluster, because you have neither the operator nor a Vault. Lab 3 makes solving this the exercise.</p>
+
+  <h3>6.7 · Namespace — folders inside the cluster</h3>
+  <p>A <strong>Namespace</strong> partitions one cluster: names are unique per-namespace, and permissions/quotas attach per-namespace. This repo's overlays deploy into <code>openrouter-dev</code> / <code>openrouter-staging</code> / <code>openrouter</code>. Cross-namespace DNS works with a longer name: <code>otel-collector.observability.svc.cluster.local</code> — service <code>otel-collector</code> in namespace <code>observability</code> — which you'll spot in the deployment env vars.</p>
+
+  <h3>6.8 · Ingress — HTTP(S) from the outside world, routed by hostname</h3>
+  <p>ClusterIP Services are internal. An <strong>Ingress</strong> is the front door: rules mapping external hostnames/paths to Services, executed by an <em>ingress controller</em> (here: nginx) that a cluster must have installed. <code>base/ingress.yaml</code> maps <code>api.openrouter.example</code> → gateway, <code>app.*</code>/<code>docs.*</code> → frontend, and its annotations are a small masterclass in streaming LLM traffic through nginx:</p>
+  <div class="codeblock"><div class="bar">base/ingress.yaml (excerpt)</div><pre>
+nginx.ingress.kubernetes.io/proxy-buffering: <span class="s">"off"</span>     <span class="c"># stream each SSE chunk immediately —</span>
+                                                       <span class="c"># buffered, a chat stream would arrive all at once at the end</span>
+nginx.ingress.kubernetes.io/proxy-read-timeout: <span class="s">"3600"</span> <span class="c"># an LLM response can stream for minutes;</span>
+                                                       <span class="c"># default 60s would cut it mid-sentence</span>
+cert-manager.io/cluster-issuer: letsencrypt-prod       <span class="c"># TLS certificates auto-issued & renewed</span>
+nginx.ingress.kubernetes.io/limit-rps: <span class="s">"200"</span>           <span class="c"># edge rate-limit before the app's own limiter</span></pre></div>
+  <p>Notice the buffering/timeout annotations exist <em>only</em> on the API host, not the dashboard host — real configs have asymmetries like this; templates don't.</p>
+
+  <h3>6.9 · HPA — automatic scaling</h3>
+  <p>A <strong>HorizontalPodAutoscaler</strong> continuously adjusts a Deployment's replica count between a floor and ceiling based on metrics. The gateway's (<code>base/gateway-go/hpa.yaml</code>) scales 5→200 pods on three OR-ed signals: a custom requests-per-second metric (target 2000/pod — the leading indicator), CPU 70%, memory 80% (safety nets). Its <code>behavior</code> block encodes the asymmetry every autoscaler should have: <strong>scale up fast</strong> (up to double, within 30s) because slow reaction drops traffic, <strong>scale down slow</strong> (max 10%/minute after 5 quiet minutes) because thrashing is worse than briefly over-provisioning. Note also what <em>doesn't</em> have an HPA: the celery worker — queue workers should scale on queue depth, not CPU (a worker at 100% CPU is healthy; a deep queue with idle workers is not), and that needs a different tool (KEDA), a trade-off the Helm values file documents explicitly.</p>
+
+  <h3>6.10 · PDB, NetworkPolicy, StatefulSet, ServiceAccount — the supporting cast</h3>
+  <ul>
+    <li><strong>PodDisruptionBudget</strong> (<code>pdb.yaml</code>) — caps <em>voluntary</em> disruptions (node maintenance, cluster upgrades): "never evict below N available." It doesn't prevent crashes; it prevents <em>maintenance</em> from causing an outage. Lab 6 shows it physically blocking a node drain.</li>
+    <li><strong>NetworkPolicy</strong> — a firewall around pods. By default all pods can talk to all pods; <code>base/gateway-go/networkpolicy.yaml</code> switches the gateway to default-deny with explicit allows: inbound only from nginx and the frontend, outbound only to DNS, the backend, Redis, NATS, telemetry — and to the internet on 443 <em>except</em> <code>169.254.169.254</code> (the cloud metadata service) and private IP ranges. That exception list means a <em>compromised</em> gateway pod can reach LLM providers but cannot pivot into the cloud account or internal network. Caveat: policies are enforced by the cluster's network plugin (CNI), and minikube's default doesn't enforce them — they apply and silently do nothing (Lab 6 stretch: start minikube with Calico and watch one actually block).</li>
+    <li><strong>StatefulSet</strong> — like a Deployment, but for stateful software: pods get stable names (<code>postgres-0</code>), stable per-pod DNS, and <em>each its own persistent disk</em> that survives rescheduling. Deployment pods are interchangeable cattle; StatefulSet pods are named pets with their own storage. The base runs Postgres (via Patroni, for automatic failover), Redis, and NATS JetStream this way — and Chapter 7 shows prod deleting two of them in favor of managed cloud services.</li>
+    <li><strong>ServiceAccount</strong> — a pod's identity for calling the Kubernetes API. These workloads never call it, so every Deployment sets <code>automountServiceAccountToken: false</code>: no credential in the pod means no credential to steal.</li>
+    <li><strong>Security context</strong> — every pod here carries the full "restricted" hardening set: <code>runAsNonRoot</code> (with the numeric UID from Chapter 3), all Linux capabilities dropped, no privilege escalation, a default seccomp filter, and <code>readOnlyRootFilesystem: true</code> — the container literally cannot write anywhere except explicitly mounted, size-capped scratch volumes (<code>emptyDir</code>) for <code>/tmp</code> and caches. Making every writable path explicit is the point.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="ch7">
+  <div class="part-head">
+    <p class="eyebrow">Chapter 7</p>
+    <h2>Environments: kustomize &amp; Helm</h2>
+  </div>
+  <p>Dev wants 1 replica and cheap resources; prod wants 10 and pinned image versions. Copy-pasting the YAML per environment guarantees drift — the copies diverge silently until a prod incident reveals it. Two tools solve this, and this repo ships <em>both</em>, describing the same system — an unusually good side-by-side.</p>
+
+  <h3>Kustomize: a base plus patches, no templates</h3>
+  <p><strong>Kustomize</strong> (built into kubectl) keeps one complete <em>base</em> of plain YAML and layers environment <em>overlays</em> on top — each overlay a small file of differences. <code>kubectl apply -k overlays/dev</code> renders base + patches and applies the result. The base here says, in its own comment, "never apply this base directly" — replica counts, image tags, and hostnames are the overlays' job:</p>
+  <div class="tablewrap">
+  <table>
+    <tr><th>Overlay</th><th>Namespace</th><th>Images</th><th>Notable</th></tr>
+    <tr><td><code>dev</code></td><td><code>openrouter-dev</code>, names prefixed <code>dev-</code></td><td>mutable <code>:dev</code> tags</td><td>low replicas, shrunk resources</td></tr>
+    <tr><td><code>staging</code></td><td><code>openrouter-staging</code></td><td>tags</td><td>mid-scale</td></tr>
+    <tr><td><code>prod</code></td><td><code>openrouter</code></td><td><strong>immutable digests</strong>, injected by the release pipeline</td><td>deletes in-cluster Postgres/Redis via <code>$patch: delete</code> — managed cloud services (from Terraform) replace them</td></tr>
+  </table>
+  </div>
+  <p>Two mechanisms to understand deeply: the <strong><code>images:</code> transformer</strong> rewrites every image reference — dev uses tags for speed, prod pins digests because tags are mutable and digests can't be silently swapped (supply-chain hygiene, straight from Chapter 2). And the <strong><code>configMapGenerator</code></strong> creates ConfigMaps with a <em>content-hash suffix</em> in the name, rewriting all references to match — so changing config produces a "new" ConfigMap name, which changes the pod template, which triggers a rolling restart automatically. That's the answer to the eternal "I changed the ConfigMap, why did/didn't my pods restart?"</p>
+  <div class="landmine"><span class="tag">Landmine — found while writing this guide</span>
+    <p>Kustomize rewrites names only in fields it <em>knows about</em> (Service names in Ingress rules, ConfigMap refs in env). It cannot see a name buried in an arbitrary string. The gateway deployment hardcodes <code>GATEWAY_BACKEND_GRPC: backend-python:50051</code> — but the dev overlay's <code>namePrefix: dev-</code> renames that Service to <code>dev-backend-python</code>. Result: in the dev overlay as written, the gateway cannot resolve its backend. You'll hit and fix this in Lab 3 — a genuine bug found by reading, and a permanent lesson about the limits of name rewriting.</p>
+  </div>
+
+  <h3>Helm: parameterized templates, for distribution</h3>
+  <p><strong>Helm</strong> approaches the problem from the other side: the YAML becomes <em>templates</em> with placeholders (<code>{{ .Values.gateway.replicaCount }}</code>), and per-environment <em>values files</em> fill them in. A packaged template set is a <em>chart</em>; installing one into a cluster creates a <em>release</em>. The ecosystem's rough division of labor: <strong>kustomize for environments you own</strong> (transparent, plain YAML, easy diffs), <strong>Helm for software you hand to strangers</strong> — operators who should only touch a values file, flipping switches like <code>gateway.enabled</code>, <code>postgres.embedded</code>, or an air-gapped registry mirror. This repo's chart ships three values files (defaults, <code>values-prod.yaml</code>, <code>values-self-hosted.yaml</code> — the latter turns on in-cluster Ollama for open-weight models) and is honest scaffold: templates exist for the gateway, but backend/frontend/worker templates are <em>not written yet</em>, while <code>values.yaml</code> is complete. Writing the missing templates is Lab 5's deliverable and the best structured Helm exercise this repo offers.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="labs">
+  <div class="part-head">
+    <p class="eyebrow">Chapter 8</p>
+    <h2>Labs on minikube</h2>
+  </div>
+  <p>Concepts become skills here. Labs 1–2 need only Docker (already installed). Lab 0 adds the Kubernetes toolchain. Do them in order — each builds on the last. Budget an evening for each of Labs 3–6.</p>
+
+  <div class="lab">
+    <h3>Lab 0 · Install kubectl, minikube, helm</h3>
+    <p class="goal">Goal: a working single-node Kubernetes cluster on this machine.</p>
+    <div class="codeblock"><div class="bar">shell</div><pre>
+<span class="c"># kubectl — the Kubernetes CLI</span>
+curl -LO <span class="s">"https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"</span>
+chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+
+<span class="c"># minikube — your local cluster</span>
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube && rm minikube-linux-amd64
+
+<span class="c"># helm</span>
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+<span class="c"># start the cluster — the docker driver runs it inside a container (no VM needed)</span>
+minikube start --driver=docker --cpus=4 --memory=6g
+kubectl get nodes                    <span class="c"># one node, STATUS Ready = your cluster lives</span>
+kubectl get pods -A                  <span class="c"># the control plane itself, running as pods — inspect it!</span>
+minikube dashboard                   <span class="c"># optional web UI; great for orientation while learning</span></pre></div>
+    <p><strong>Observe:</strong> <code>kubectl get pods -A</code> shows the API server, scheduler, etcd from Chapter 5 as actual pods in the <code>kube-system</code> namespace. Kubernetes runs itself on itself. <code>minikube stop</code> pauses everything; <code>minikube delete</code> erases the cluster for a fresh start — total safety to experiment.</p>
+  </div>
+
+  <div class="lab">
+    <h3>Lab 1 · Build and dissect the repo's images</h3>
+    <p class="goal">Goal: feel layers, caching, and multi-stage builds — Chapters 2–3 made physical.</p>
+    <div class="codeblock"><div class="bar">shell — from the repo root</div><pre>
+make docker                          <span class="c"># builds gateway-go, backend-python, frontend-web</span>
+docker image ls | grep openrouter    <span class="c"># compare the three sizes against Ch.3's table</span>
+docker history openrouter/gateway-go:dev       <span class="c"># the layer stack — scratch is ~3 tiny layers</span>
+docker history openrouter/backend-python:dev   <span class="c"># spot the venv-copy layer</span>
+docker inspect openrouter/gateway-go:dev --format <span class="s">'{{.Config.User}} {{.Config.Entrypoint}}'</span>
+docker run --rm -p 8080:8080 openrouter/gateway-go:dev   <span class="c"># then: curl localhost:8080/health</span></pre></div>
+    <p><strong>The cache experiment (do this):</strong> run <code>make docker-go</code> twice — the second is instant (all layers cached). Now edit any comment in a <code>.go</code> file and rebuild: fast, because the module-download layer held. Now add any dependency-touching change to <code>go.mod</code> and rebuild: slow — you crossed the cache boundary from Chapter 3. You now understand Docker build caching better than most people shipping with it.</p>
+    <p><strong>Stretch:</strong> install <code>dive</code> and explore layer contents; run <code>docker build --target build gateway-go -t gw-builder</code> to keep only the builder stage, and compare its size with the final image.</p>
+  </div>
+
+  <div class="lab">
+    <h3>Lab 2 · The compose stack, end to end</h3>
+    <p class="goal">Goal: run the full dev stack; interrogate merging, DNS, health-gating — Chapter 4 made physical.</p>
+    <div class="codeblock"><div class="bar">shell</div><pre>
+docker compose -f docker-compose.yml -f docker-compose.dev.yml config | less   <span class="c"># the merged truth</span>
+make up-docker                       <span class="c"># first boot is slow BY DESIGN (cache volumes filling)</span>
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps              <span class="c"># watch the health column</span>
+curl -s http://localhost:8080/health          <span class="c"># gateway, via published port</span>
+curl -s http://localhost:8000/health          <span class="c"># backend</span>
+docker exec or-gateway sh -c <span class="s">'wget -qO- http://backend:8000/health'</span>   <span class="c"># compose DNS, from inside</span>
+docker volume ls | grep openrouter            <span class="c"># the named volumes from Ch.4</span></pre></div>
+    <p><strong>Observe:</strong> services come up in <code>depends_on</code> order, gated on healthchecks; the worker container logs show it waiting for the shared venv. Kill Redis (<code>docker compose restart redis</code>) and watch what self-recovers. <strong>Stretch:</strong> add <code>-f docker-compose.observability.yml</code>, open Grafana, and find your own curl requests in Loki's logs.</p>
+  </div>
+
+  <div class="lab">
+    <h3>Lab 3 · Deploy to minikube — five failures, five lessons</h3>
+    <p class="goal">Goal: the centerpiece. Apply the repo's dev overlay to your cluster, meet five instructive failures, and build a clean <code>local</code> overlay that fixes them. This lab converts Chapters 5–7 into competence.</p>
+    <div class="codeblock"><div class="bar">shell</div><pre>
+kubectl kustomize infrastructure/kubernetes/overlays/dev | less   <span class="c"># ALWAYS read rendered output first</span>
+kubectl apply -k infrastructure/kubernetes/overlays/dev           <span class="c"># now watch it fail — on purpose</span>
+kubectl -n openrouter-dev get pods -w                             <span class="c"># -w = watch live</span>
+kubectl -n openrouter-dev describe pod &lt;name&gt;                     <span class="c"># the Events section is your debugger</span>
+kubectl -n openrouter-dev logs deploy/dev-gateway-go              <span class="c"># app logs when the container starts at all</span></pre></div>
+    <p><strong>The five failures, in the order you'll meet them:</strong></p>
+    <ol>
+      <li><em>"no matches for kind ExternalSecret / ServiceMonitor / PrometheusRule"</em> — these object types are <strong>CRDs</strong> (custom types added by operators you haven't installed: External Secrets Operator, Prometheus Operator). Lesson: manifests can depend on cluster add-ons. Fix in your local overlay: exclude those files, and write plain <code>Secret</code> manifests with dev-only values for <code>openrouter-postgres</code>, <code>openrouter-redis</code>, <code>openrouter-nats</code>, <code>openrouter-app</code>, <code>openrouter-stripe</code>.</li>
+      <li><em>ErrImagePull / ImagePullBackOff</em> — the cluster wants <code>ghcr.io/openrouter/gateway-go:dev</code>, which exists nowhere; Lab 1 built <code>openrouter/gateway-go:dev</code> in your host's Docker, which minikube's inner Docker can't see. Two fixes — learn both:
+        <div class="codeblock"><div class="bar">shell</div><pre>
+<span class="c"># option A: retag + load into minikube</span>
+docker tag openrouter/gateway-go:dev ghcr.io/openrouter/gateway-go:dev
+minikube image load ghcr.io/openrouter/gateway-go:dev     <span class="c"># repeat for backend + frontend</span>
+<span class="c"># option B (the classic trick): point your shell at minikube's Docker and build INSIDE it</span>
+eval $(minikube docker-env)
+make docker && docker tag …                               <span class="c"># builds land directly in the cluster</span>
+eval $(minikube docker-env -u)                            <span class="c"># undo when done</span></pre></div></li>
+      <li><em>CreateContainerConfigError</em> — a pod references a Secret key you didn't create; <code>describe pod</code> names exactly which. This is the eternal error signature of broken secret wiring — learn its face now, cheaply.</li>
+      <li><em>Gateway CrashLoopBackOff / can't reach backend</em> — the Chapter 7 landmine: <code>namePrefix: dev-</code> renamed the Service to <code>dev-backend-python</code>, but the hardcoded env var still says <code>backend-python:50051</code>. Fix: in your local overlay drop the prefix, or patch <code>GATEWAY_BACKEND_GRPC</code>. Congratulations — you've debugged a real config bug with <code>describe</code> + <code>logs</code>.</li>
+      <li><em>Ingress exists but nothing answers</em> — no ingress controller yet. minikube makes this easy:
+        <div class="codeblock"><div class="bar">shell</div><pre>
+minikube addons enable ingress                       <span class="c"># installs the nginx controller</span>
+kubectl get pods -n ingress-nginx                    <span class="c"># wait Ready</span>
+echo <span class="s">"$(minikube ip) api.dev.openrouter.example"</span> | sudo tee -a /etc/hosts
+curl http://api.dev.openrouter.example/health
+<span class="c"># while iterating, skip DNS entirely:</span>
+kubectl -n openrouter-dev port-forward svc/dev-gateway-go 8080:80</pre></div></li>
+    </ol>
+    <p><strong>Also enable</strong> <code>minikube addons enable metrics-server</code> — without it the HPA's CPU metric reads <code>&lt;unknown&gt;</code> (and the custom RPS metric will <em>always</em> read unknown locally; it needs prometheus-adapter — the HPA works fine on CPU/memory regardless, a useful lesson in graceful degradation).</p>
+    <p><strong>Deliverable:</strong> <code>infrastructure/kubernetes/overlays/local/</code> that applies cleanly to a fresh minikube — the single most instructive thing you can build from this repo. <strong>When green:</strong> <code>kubectl -n openrouter-dev get deploy,sts,svc,hpa,pdb</code> and a successful curl through the ingress.</p>
+  </div>
+
+  <div class="lab">
+    <h3>Lab 4 · Rollouts, probes, self-healing</h3>
+    <p class="goal">Goal: watch the reconciliation loop and probe machinery move — Chapter 6 in motion.</p>
+    <div class="codeblock"><div class="bar">shell</div><pre>
+<span class="c"># self-healing: delete a pod, watch its replacement appear in seconds</span>
+kubectl -n openrouter-dev delete pod -l app.kubernetes.io/name=gateway-go
+kubectl -n openrouter-dev get pods -w
+
+<span class="c"># a zero-downtime rollout, live (surge first, never below capacity — maxUnavailable: 0)</span>
+kubectl -n openrouter-dev rollout restart deploy/dev-gateway-go
+kubectl -n openrouter-dev rollout status  deploy/dev-gateway-go
+kubectl -n openrouter-dev rollout history deploy/dev-gateway-go
+kubectl -n openrouter-dev rollout undo    deploy/dev-gateway-go    <span class="c"># one-command rollback</span></pre></div>
+    <p><strong>Then break the probes, one at a time:</strong> patch the <em>readiness</em> path to <code>/nope</code> — pods go <code>Running</code> but <code>0/1 Ready</code>, vanish from the Service's endpoints, and are <em>not</em> restarted: traffic-gating, no punishment. Revert, then patch <em>liveness</em> instead — now <code>RESTARTS</code> climbs and eventually <code>CrashLoopBackOff</code> appears. The difference between those two behaviors is the single most important operational concept in Kubernetes; having caused both, you own it.</p>
+  </div>
+
+  <div class="lab">
+    <h3>Lab 5 · Helm: render, install, extend</h3>
+    <p class="goal">Goal: read templates the way the cluster does, and complete the scaffold chart.</p>
+    <div class="codeblock"><div class="bar">shell</div><pre>
+helm template openrouter infrastructure/helm/openrouter | less        <span class="c"># values→YAML, no cluster needed</span>
+helm template openrouter infrastructure/helm/openrouter \
+  -f infrastructure/helm/openrouter/values-self-hosted.yaml | less    <span class="c"># diff mentally vs default render</span>
+helm install openrouter infrastructure/helm/openrouter \
+  --namespace or-helm --create-namespace --dry-run</pre></div>
+    <p><strong>Observe:</strong> how <code>_helpers.tpl</code> centralizes names/labels; how the <code>gateway.providers</code> block in values becomes the ConfigMap the gateway mounts. <strong>Deliverable:</strong> write <code>templates/backend/deployment.yaml</code> — mirror the kustomize base's backend deployment, but drive every knob (replicas, image, resources, ports) from <code>values.yaml</code>, which is already fully written. Compare your render against <code>kubectl kustomize</code> output as the answer key.</p>
+  </div>
+
+  <div class="lab">
+    <h3>Lab 6 · Failure drills</h3>
+    <p class="goal">Goal: meet the classic failure signatures deliberately, where they cost nothing.</p>
+    <ul>
+      <li><strong>OOMKill:</strong> patch the backend's memory limit down to 128Mi. Find <code>OOMKilled</code> in <code>describe pod</code> and watch <code>CrashLoopBackOff</code> follow (notice: one is the <em>cause</em>, the other the <em>pattern of repeated restarts</em> — people conflate them).</li>
+      <li><strong>PDB vs drain:</strong> <code>kubectl cordon minikube</code> then <code>kubectl drain minikube --ignore-daemonsets</code> — watch the PodDisruptionBudget refuse evictions that would drop below its floor. <code>kubectl uncordon minikube</code> to recover.</li>
+      <li><strong>Debugging a scratch container:</strong> <code>kubectl exec -it &lt;gateway-pod&gt; -- sh</code> fails — Chapter 3 told you why: there is no shell in <code>scratch</code>. The modern answer: <code>kubectl debug -it &lt;pod&gt; --image=busybox --target=gateway</code> attaches a temporary "ephemeral container" sharing the pod's process namespace — you inspect from beside it, and the tools vanish when you're done.</li>
+      <li><strong>Stretch:</strong> <code>minikube delete</code>, then <code>minikube start --driver=docker --cni=calico</code>, redeploy, and prove the gateway NetworkPolicy actually blocks a stray test pod from reaching :8080 — the same policy that silently no-ops on the default network plugin. Security config that isn't tested is decoration; now you know how to test it.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="landmines">
+  <div class="part-head">
+    <p class="eyebrow">Appendix A</p>
+    <h2>Repo-specific landmines</h2>
+  </div>
+  <div class="tablewrap">
+  <table>
+    <tr><th>Landmine</th><th>Detail</th></tr>
+    <tr><td>Leaked OAuth secret</td><td><code>.env</code> holds a real <code>GOCSPX-…</code> Google client secret — rotate before any push; compose's <code>env_file: .env</code> spreads it to every app container.</td></tr>
+    <tr><td>Image-name mismatch</td><td>The Makefile builds <code>openrouter/*:dev</code>; every k8s manifest expects <code>ghcr.io/openrouter/*</code>. Retag + <code>minikube image load</code> (Lab 3), or build inside minikube's Docker via <code>minikube docker-env</code>.</td></tr>
+    <tr><td><code>dev-</code> prefix vs hardcoded name</td><td><code>GATEWAY_BACKEND_GRPC: backend-python:50051</code> isn't rewritten by kustomize; the dev overlay's <code>namePrefix</code> breaks gateway→backend DNS (Chapter 7, Lab 3 failure #4).</td></tr>
+    <tr><td>ESO + Vault assumed</td><td><code>base/secrets.yaml</code> needs External Secrets CRDs <em>and</em> a reachable Vault; the <code>scripts/k8s-bootstrap.sh</code> it references doesn't exist in the repo.</td></tr>
+    <tr><td>Prometheus Operator assumed</td><td>ServiceMonitor / PrometheusRule objects fail on a bare cluster; the HPA's custom RPS metric additionally needs prometheus-adapter. CPU/memory scaling needs minikube's <code>metrics-server</code> addon.</td></tr>
+    <tr><td>Celery module path</td><td>Correct path is <code>app.repository.celery_app</code>; the k8s manifests were fixed during the n-tier restructure — keep them that way.</td></tr>
+    <tr><td>Prod digest placeholders</td><td>The prod overlay pins <code>sha256:DEADBEEF…</code> placeholders; a release pipeline must inject real digests or prod won't pull at all.</td></tr>
+    <tr><td>NetworkPolicy enforcement</td><td>Only real under a CNI that enforces it (Calico/Cilium) — silently inert on minikube's default plugin.</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="glossary">
+  <div class="part-head">
+    <p class="eyebrow">Appendix B</p>
+    <h2>Glossary</h2>
+  </div>
+  <dl>
+    <dt>Image</dt><dd>A frozen, read-only filesystem + metadata; the shippable unit. Built from a Dockerfile, stored in a registry.</dd>
+    <dt>Container</dt><dd>A running instance of an image: an isolated process with a thin writable layer. Disposable by design.</dd>
+    <dt>Layer</dt><dd>The filesystem diff produced by one Dockerfile instruction; cached and shared between images.</dd>
+    <dt>Registry</dt><dd>A server storing images (Docker Hub, <code>ghcr.io</code>). <em>Tag</em> = mutable version label; <em>digest</em> = immutable content hash.</dd>
+    <dt>Volume / bind mount</dt><dd>Storage that outlives containers (named volume) or maps a host folder in (bind mount).</dd>
+    <dt>Cluster / node</dt><dd>A set of machines managed as one (cluster); each worker machine (node) runs pods via its kubelet agent.</dd>
+    <dt>Pod</dt><dd>Smallest K8s unit: one+ containers sharing an IP. Mortal; replaced, never healed.</dd>
+    <dt>Deployment</dt><dd>Keeps N pod replicas running from a template; performs rolling updates; enables rollback.</dd>
+    <dt>Service</dt><dd>Stable DNS name + virtual IP load-balancing across ready pods selected by labels.</dd>
+    <dt>Ingress</dt><dd>Hostname/path routing rules from the outside world to Services; needs an ingress controller installed.</dd>
+    <dt>ConfigMap / Secret</dt><dd>Runtime configuration (plain / sensitive) injected into pods as env vars or files.</dd>
+    <dt>Namespace</dt><dd>A named partition of the cluster for grouping, naming, and permissions.</dd>
+    <dt>Probe</dt><dd>Startup ("done booting?"), readiness ("traffic now?" → gate), liveness ("wedged?" → restart).</dd>
+    <dt>Requests / limits</dt><dd>Scheduler reservation vs hard cap. Memory over limit = OOMKilled; CPU over limit = throttled.</dd>
+    <dt>HPA</dt><dd>HorizontalPodAutoscaler — adjusts replica count from metrics between a min and max.</dd>
+    <dt>PDB</dt><dd>PodDisruptionBudget — floor on availability during voluntary disruptions (drains, upgrades).</dd>
+    <dt>StatefulSet</dt><dd>Deployment-like controller for stateful apps: stable pod names and per-pod persistent disks.</dd>
+    <dt>NetworkPolicy</dt><dd>Pod-level firewall rules; enforced only by capable network plugins (CNIs).</dd>
+    <dt>CRD / operator</dt><dd>Custom Resource Definition — a new object type added to a cluster, usually with an <em>operator</em> (a controller add-on) that acts on it. E.g. ExternalSecret, ServiceMonitor.</dd>
+    <dt>kustomize</dt><dd>Base + overlay patching of plain YAML; built into kubectl (<code>-k</code>).</dd>
+    <dt>Helm</dt><dd>Templates + values files packaged as charts; installs create releases.</dd>
+    <dt>minikube</dt><dd>A full single-node cluster run locally (here: inside Docker), API-identical to production clusters.</dd>
+  </dl>
+</section>
+
+<!-- ============================================================ -->
+<section id="cheat">
+  <div class="part-head">
+    <p class="eyebrow">Appendix C</p>
+    <h2>Command cheat sheets</h2>
+  </div>
+  <h3>Docker</h3>
+  <div class="codeblock"><div class="bar">daily docker</div><pre>
+docker build -t name:tag DIR         <span class="c"># build image from DIR/Dockerfile</span>
+docker run -it --rm -p H:C IMG       <span class="c"># run; publish container port C on host port H</span>
+docker ps -a                         <span class="c"># all containers, incl. exited</span>
+docker logs -f NAME                  <span class="c"># follow a container's output</span>
+docker exec -it NAME sh              <span class="c"># shell into a running container (if it has one!)</span>
+docker image ls / docker history IMG <span class="c"># images on disk / layer breakdown</span>
+docker system prune                  <span class="c"># clean up stopped containers, unused networks/layers</span>
+docker compose up -d / down / ps / logs -f / config</pre></div>
+  <h3>kubectl + minikube</h3>
+  <div class="codeblock"><div class="bar">daily kubernetes</div><pre>
+minikube start --driver=docker / stop / delete / dashboard / ip
+minikube addons enable ingress|metrics-server
+minikube image load IMG              <span class="c"># copy a host-built image into the cluster</span>
+kubectl get pods|deploy|svc|hpa -n NS [-w]         <span class="c"># -w watches live</span>
+kubectl describe pod NAME -n NS      <span class="c"># state + Events — your first debugging stop</span>
+kubectl logs -f deploy/NAME -n NS    <span class="c"># app output</span>
+kubectl apply -k overlays/dev        <span class="c"># apply a kustomize overlay</span>
+kubectl apply -f file.yaml / delete -f file.yaml
+kubectl rollout status|history|undo|restart deploy/NAME -n NS
+kubectl port-forward svc/NAME 8080:80 -n NS        <span class="c"># tunnel a Service to localhost</span>
+kubectl exec -it POD -n NS -- sh     <span class="c"># shell in (needs a shell in the image)</span>
+kubectl debug -it POD --image=busybox --target=CTR <span class="c"># debug shell for shell-less images</span>
+kubectl kustomize DIR | less         <span class="c"># render without applying — read before you apply</span></pre></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="reading">
+  <div class="part-head">
+    <p class="eyebrow">Appendix D</p>
+    <h2>If you read ten files, read these, in this order</h2>
+  </div>
+  <ol class="filemap">
+    <li><code>gateway-go/Dockerfile</code> — multi-stage, scratch, static binaries (Ch. 3)</li>
+    <li><code>frontend-web/Dockerfile</code> — 3-stage caching, standalone output, chown-on-copy</li>
+    <li><code>docker-compose.yml</code> + <code>docker-compose.dev.yml</code> — overlay merging, health gating, cache volumes (Ch. 4)</li>
+    <li><code>infrastructure/kubernetes/base/gateway-go/deployment.yaml</code> — the annotated centerpiece (Ch. 6)</li>
+    <li><code>base/backend-celery-worker/deployment.yaml</code> — same image/different command, exec probes, 300s grace</li>
+    <li><code>base/gateway-go/hpa.yaml</code> — multi-metric autoscaling, scale-up-fast/down-slow</li>
+    <li><code>base/ingress.yaml</code> — SSE through nginx, cert-manager, edge limits</li>
+    <li><code>base/gateway-go/networkpolicy.yaml</code> — default-deny with SSRF-aware egress</li>
+    <li><code>overlays/prod/kustomization.yaml</code> — digests, <code>$patch: delete</code>, managed-service swap (Ch. 7)</li>
+    <li><code>infrastructure/helm/openrouter/values.yaml</code> — the whole system as an operator's contract</li>
+  </ol>
+  <p style="margin-top:1.5rem; color: var(--muted); font-style: italic;">Written 2026-08-19 · every file path, value, and behavior above was read from this repo's working tree, not assumed.</p>
+</section>
+
+</div>
+</body>
+</html>

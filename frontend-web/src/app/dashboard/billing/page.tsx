@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { CreditBalanceCard } from "@/features/billing/credit-balance-card/CreditBalanceCard";
-import { PurchaseCreditsDialog } from "@/features/billing/purchase-credits-dialog/PurchaseCreditsDialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Skeleton } from "@/shared/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { CreditBalanceCard } from "@/api/components/billing/CreditBalanceCard";
+import { PurchaseCreditsDialog } from "@/api/components/billing/PurchaseCreditsDialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/api/ui/card";
+import { Skeleton } from "@/api/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/api/ui/table";
 
 export const metadata: Metadata = {
   title: "Billing",

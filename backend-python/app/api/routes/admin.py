@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, status
 
 from app.api.decorators import audit_log, require_permission
 from app.api.dependencies import AuthContext, get_current_auth, get_uow
-from app.application.uow import UnitOfWork
-from app.domain.errors import NotFound
+from app.service.uow import UnitOfWork
+from app.service.domain.errors import NotFound
 
 router = APIRouter()
 

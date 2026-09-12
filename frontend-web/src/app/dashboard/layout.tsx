@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-import { Sidebar } from "@/widgets/sidebar/Sidebar";
-import { Topbar } from "@/widgets/topbar/Topbar";
+import { Sidebar } from "@/api/layout/Sidebar";
+import { Topbar } from "@/api/layout/Topbar";
 
 // Server-side session check — middleware only catches missing cookies; this
 // confirms the session resolves and exposes role for downstream RBAC checks.

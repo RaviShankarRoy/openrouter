@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from app.application.routing.config import RoutingConfig, _parse, get_routing_config
-from app.application.routing.strategies import StrategyRegistry
+from app.service.routing.config import RoutingConfig, _parse, get_routing_config
+from app.service.routing.strategies import StrategyRegistry
 
 
 @pytest.fixture
@@ -119,7 +119,7 @@ def test_get_routing_config_loads_real_file(tmp_path: Path, monkeypatch: pytest.
             residency: [global]
         """).strip()
     )
-    from app.core.config import settings
+    from app.shared.config import settings
 
     monkeypatch.setattr(settings, "routing_config_path", str(routing))
     get_routing_config.cache_clear()

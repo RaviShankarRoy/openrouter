@@ -1,6 +1,6 @@
 # gateway-go — Hot-Path Reverse Proxy
 
-Go 1.24 reverse proxy implementing the OpenAI-compatible API surface. Hexagonal architecture, Chain-of-Responsibility middleware, circuit breaker per provider. Owns the latency budget (target P99 < 15µs gateway overhead per [NFR-002](../DEVELOPMENT_PLAN.md#6-non-functional-requirements--how-each-is-met)).
+Go 1.24 reverse proxy implementing the OpenAI-compatible API surface. Layered n-tier architecture, Chain-of-Responsibility middleware, circuit breaker per provider. Owns the latency budget (target P99 < 15µs gateway overhead per [NFR-002](../DEVELOPMENT_PLAN.md#6-non-functional-requirements--how-each-is-met)).
 
 ## Commands
 
@@ -13,27 +13,39 @@ make test                              # delegates to the above
 make dev                               # air hot-reload (if installed)
 ```
 
-## Layout (Hexagonal / Ports & Adapters)
+## Layout (Layered N-Tier)
 
 ```
-cmd/gateway/                # entry point: main.go
+cmd/gateway/                # entry point / composition root: main.go
 internal/
-├── auth/                   # LRU + Redis + gRPC fallback for key validation
-├── cache/                  # L1 exact-match Redis cache
-├── circuitbreaker/         # sony/gobreaker wrapper, per-provider
-├── middleware/             # chain.go: id → log → auth → ratelimit → cache → route → proxy
-├── pool/                   # sync.Pool for hot-path []byte buffers
-├── proxy/                  # HTTP/2 connection pooling + provider adapters
-│   └── adapters/           # openai.go, anthropic.go, google.go — UnifiedRequest/Response
-├── router/                 # provider selection + fallback chain
-│   └── strategies/         # cost / latency / quality (Strategy pattern)
-├── server/                 # http.Server with functional options
-└── transport/http/handlers/    # /v1/chat/completions, /health
+├── api/                    # ── presentation tier: everything HTTP-facing
+│   ├── handlers/           # /v1/chat/completions, /health
+│   ├── middleware/         # chain.go: id → log → auth → ratelimit → cache → route → proxy
+│   └── server/             # http.Server with functional options
+├── service/                # ── business tier: what the gateway decides
+│   ├── proxy/              # orchestration + HTTP/2 client pool + sync.Pool buffers
+│   ├── router/             # provider selection + fallback chain
+│   ├── strategies/         # cost / latency / quality (Strategy pattern)
+│   ├── circuitbreaker/     # sony/gobreaker wrapper, per (provider, model)
+│   └── ratelimit/          # sliding-window Lua script
+├── repository/             # ── data tier: everything that talks to something else
+│   ├── auth/               # LRU + Redis + gRPC fallback for key validation
+│   ├── cache/              # L1 exact-match Redis cache
+│   ├── adapters/           # openai.go, anthropic.go, google.go — UnifiedRequest/Response
+│   └── proto/              # generated gRPC stubs (gitignored)
+└── shared/                 # ── cross-cutting, imported by any tier
+    ├── config/             # koanf-loaded env config
+    ├── model/              # Target, ModelEntry, ProviderConfig — data only, no behaviour
+    └── observability/      # slog, Prometheus collectors, OTel setup
 ```
+
+**Dependency rule: imports point downward only.** `api → service → repository`, and any
+tier may import `shared`. The reason `shared/model` exists is that `repository/adapters`
+needs `ProviderConfig`; without it, the data tier would have to import the business tier.
 
 ## Middleware Chain Order
 
-Middleware order matters — defined in `internal/middleware/chain.go`. Don't reorder without checking circuit-breaker semantics:
+Middleware order matters — defined in `internal/api/middleware/chain.go`. Don't reorder without checking circuit-breaker semantics:
 
 ```
 RequestID → Recoverer → Logger → Auth → RateLimit → Cache(L1) → Router → Proxy(+CircuitBreaker) → Telemetry
@@ -41,11 +53,11 @@ RequestID → Recoverer → Logger → Auth → RateLimit → Cache(L1) → Rout
 
 ## Adding a New Provider Adapter
 
-1. Implement `proxy.Adapter` interface in `internal/proxy/adapters/<name>.go`:
+1. Implement `proxy.Adapter` interface in `internal/repository/adapters/<name>.go`:
    - `NormalizeRequest(UnifiedRequest) (httpRequest, error)`
    - `NormalizeResponse(httpResponse) (UnifiedResponse, error)`
    - `StreamTranslator() proxy.StreamTranslator`
-2. Register in `internal/proxy/factory.go`
+2. Register in `internal/service/proxy/factory.go`
 3. Add config schema entry for `providers.yaml`
 4. Add table-driven unit tests in `<name>_test.go` (see `anthropic_test.go`)
 
@@ -55,7 +67,7 @@ For streaming adapters, **buffer to `\n\n` SSE boundaries before flushing** — 
 
 - **No logging on the request path.** Emit to NATS asynchronously via `internal/telemetry`.
 - **No DB connections.** Auth metadata comes from LRU → Redis → gRPC to backend.
-- **Use `sync.Pool`** for buffers > 4 KB. See `internal/pool/`.
+- **Use `sync.Pool`** for buffers > 4 KB. See `internal/service/proxy/`.
 - **Context propagation:** every outbound call must use `ctx` from `r.Context()`.
 - **No panics in middleware** — `Recoverer` wraps the chain but a panic mid-stream after `w.WriteHeader` produces "superfluous response.WriteHeader" log spam.
 
@@ -70,10 +82,10 @@ For streaming adapters, **buffer to `\n\n` SSE boundaries before flushing** — 
 
 ## Known Issues (from audit)
 
-- `internal/auth/cache.go` uses random map eviction instead of LRU — replace with `hashicorp/golang-lru/v2`.
-- `internal/middleware/ratelimit.go:29` fails open on Redis error — consider in-process token bucket fallback.
-- `internal/proxy/pool.go` honors `HTTP_PROXY`/`HTTPS_PROXY` env vars — SSRF risk if env injected; pin `Transport.Proxy = nil` in prod.
-- gRPC client uses `insecure.NewCredentials()` ([internal/auth/grpc_client.go:39](internal/auth/grpc_client.go#L39)). mTLS expected via service mesh in prod but no mesh manifest exists yet.
+- `internal/repository/auth/cache.go` uses random map eviction instead of LRU — replace with `hashicorp/golang-lru/v2`.
+- `internal/api/middleware/ratelimit.go:29` fails open on Redis error — consider in-process token bucket fallback.
+- `internal/service/proxy/pool.go` honors `HTTP_PROXY`/`HTTPS_PROXY` env vars — SSRF risk if env injected; pin `Transport.Proxy = nil` in prod.
+- gRPC client uses `insecure.NewCredentials()` ([internal/repository/auth/grpc_client.go:39](internal/repository/auth/grpc_client.go#L39)). mTLS expected via service mesh in prod but no mesh manifest exists yet.
 - `chatRequest` handler decodes 10MB JSON with no depth limit — bound via `json.Decoder` if Go version doesn't already.
 
 ## Tests

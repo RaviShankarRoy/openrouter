@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.dependencies import get_provider_registry
-from app.infrastructure.providers.registry import ProviderRegistry
+from app.repository.providers.registry import ProviderRegistry
 
 router = APIRouter()
 

@@ -1,9 +1,9 @@
 import asyncio
-from app.domain.entities import Organization, User, KeyScope
-from app.infrastructure.database import init_db, get_session_factory
-from app.infrastructure.uow import SqlUnitOfWork
-from app.core.config import settings
-from app.application.services import AuthService, CreateKeyCommand
+from app.service.domain.entities import Organization, User, KeyScope
+from app.repository.database import init_db, get_session_factory
+from app.repository.uow import SqlUnitOfWork
+from app.shared.config import settings
+from app.service import AuthService, CreateKeyCommand
 from uuid import uuid4
 
 async def main():

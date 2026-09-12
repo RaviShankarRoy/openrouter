@@ -15,12 +15,12 @@ from __future__ import annotations
 import asyncio
 import signal
 
-from app.core.config import settings
-from app.core.logging import configure_logging, get_logger
-from app.core.tracing import init_tracing
-from app.infrastructure.database import close_db, init_db
-from app.infrastructure.grpc.server import create_server
-from app.infrastructure.redis_client import close_redis, init_redis
+from app.shared.config import settings
+from app.shared.logging import configure_logging, get_logger
+from app.shared.tracing import init_tracing
+from app.repository.database import close_db, init_db
+from app.repository.grpc.server import create_server
+from app.repository.redis_client import close_redis, init_redis
 
 _log = get_logger(__name__)
 

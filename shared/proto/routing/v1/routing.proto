@@ -4,7 +4,7 @@ syntax = "proto3";
 
 package openrouter.routing.v1;
 
-option go_package = "github.com/openrouter/gateway-go/internal/proto/routing/v1;routingv1";
+option go_package = "github.com/openrouter/gateway-go/internal/repository/proto/routing/v1;routingv1";
 
 service RoutingService {
   rpc ResolveModel(ResolveModelRequest) returns (ResolveModelResponse);

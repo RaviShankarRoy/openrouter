@@ -1,0 +1,26 @@
+# deploy/aws/Caddyfile — HTTPS edge for the single-server AWS deployment.
+#
+# Caddy obtains and renews Let's Encrypt certificates automatically the first
+# time each hostname is hit, as long as:
+#   1. api.$DOMAIN and app.$DOMAIN resolve to this server's Elastic IP, and
+#   2. ports 80 and 443 are open in the EC2 security group.
+#
+# $DOMAIN and $ACME_EMAIL come from .env.aws via docker-compose.aws.yml.
+
+{
+	email {$ACME_EMAIL}
+}
+
+# ---------- API host → Go gateway ----------
+api.{$DOMAIN} {
+	reverse_proxy gateway:8080 {
+		# LLM responses stream as SSE: flush every chunk immediately instead
+		# of buffering, or the client receives the whole answer at the end.
+		flush_interval -1
+	}
+}
+
+# ---------- App host → Next.js frontend ----------
+app.{$DOMAIN} {
+	reverse_proxy frontend:3000
+}

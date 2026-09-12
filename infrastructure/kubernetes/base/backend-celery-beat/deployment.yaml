@@ -40,7 +40,7 @@ spec:
           command: ["celery"]
           args:
             - "-A"
-            - "app.infrastructure.celery.app"
+            - "app.repository.celery_app"
             - "beat"
             - "--loglevel=info"
             - "--scheduler=redbeat.RedBeatScheduler"  # Redis-backed lock prevents dupes if mis-scaled.

@@ -1,21 +1,19 @@
-// Loaded automatically by Next.js 15 on server boot.
+// Loaded automatically by Next.js on server boot.
 //
 // OTel is opt-in: enable by setting OTEL_ENABLED=true in env. Disabled by
-// default so dev doesn't require @vercel/otel + @opentelemetry/api-logs.
-// Production deployments install the peers and flip the flag.
+// default so dev doesn't pay for an OTLP exporter nobody is collecting.
 //
-// The import is wrapped in eval() to keep Turbopack from statically analyzing
-// it — if it analyzed, missing peers would fail the dev build.
+// The import is a normal dynamic import, evaluated only after the runtime
+// guard below. `(0, eval)('import(...)')` cannot be used here: instrumentation.ts
+// is compiled for the Edge runtime as well, and Edge bans dynamic code
+// evaluation, which fails the production build.
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.OTEL_ENABLED !== "true") return;
 
   try {
-    // Indirect dynamic import so the bundler doesn't try to resolve it.
-    const mod: { registerOTel: (opts: object) => void } = await (0, eval)(
-      'import("@vercel/otel")',
-    );
-    mod.registerOTel({
+    const { registerOTel } = await import("@vercel/otel");
+    registerOTel({
       serviceName: process.env.OTEL_SERVICE_NAME ?? "frontend-web",
       instrumentationConfig: {
         fetch: { propagateContextUrls: ["*"] },

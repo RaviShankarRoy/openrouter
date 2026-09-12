@@ -10,9 +10,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.decorators import audit_log, require_permission
 from app.api.dependencies import AuthContext, get_auth_service, get_current_auth, get_uow
-from app.application.services.auth_service import AuthService, CreateKeyCommand
-from app.application.uow import UnitOfWork
-from app.domain.entities import KeyScope
+from app.service.auth_service import AuthService, CreateKeyCommand
+from app.service.uow import UnitOfWork
+from app.service.domain.entities import KeyScope
 
 router = APIRouter()
 

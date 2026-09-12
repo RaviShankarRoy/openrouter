@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { CreateKeyDialog } from "@/features/api-keys/create-key-dialog/CreateKeyDialog";
-import { KeyList } from "@/features/api-keys/key-list/KeyList";
+import { CreateKeyDialog } from "@/api/components/api-keys/CreateKeyDialog";
+import { KeyList } from "@/api/components/api-keys/KeyList";
 
 export const metadata: Metadata = {
   title: "API keys",

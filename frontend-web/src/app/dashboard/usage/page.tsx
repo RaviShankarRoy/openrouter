@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { UsageChart } from "@/widgets/usage-chart/UsageChart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Skeleton } from "@/shared/ui/skeleton";
+import { UsageChart } from "@/api/layout/UsageChart";
+import { Card, CardContent, CardHeader, CardTitle } from "@/api/ui/card";
+import { Skeleton } from "@/api/ui/skeleton";
 
 export const metadata: Metadata = { title: "Usage" };
 

@@ -20,19 +20,27 @@ Not wired into the root `Makefile` (no `make test-cli` target). Run from this di
 
 ```
 src/
-├── cli.ts                # entry point — parses argv, dispatches to command
-├── commands/
+├── cli.ts                # entry point / composition root — parses argv, dispatches
+├── api/                  # ── presentation tier: the command surface
 │   ├── login.ts          # CLI-001 OAuth2 browser flow
 │   ├── chat.ts           # CLI-003 interactive REPL
 │   ├── models.ts         # CLI-002 list models + pricing
 │   ├── usage.ts          # CLI-004 usage stats
-│   └── keys.ts           # CLI-005 API key management
-└── lib/
-    ├── api-client.ts     # fetch wrapper + SSE parser
-    ├── auth.ts           # EncryptedFileStore (scrypt-derived AES-GCM)
-    ├── config.ts         # ~/.openrouter/config.json
-    ├── logger.ts         # pino
-    └── output.ts         # formatting helpers
+│   ├── keys.ts           # CLI-005 API key management
+│   └── output.ts         # table / json renderers, spinner, colors
+├── repository/           # ── data tier: everything with I/O
+│   ├── api-client.ts     # fetch wrapper + SSE parser
+│   ├── auth.ts           # EncryptedFileStore (scrypt-derived AES-GCM)
+│   ├── config.ts         # ~/.openrouter/config.json
+│   └── version.ts        # reads package.json
+└── shared/               # ── cross-cutting
+    ├── errors.ts         # AuthError, ConfigError, ValidationError, exitWithError
+    └── logger.ts         # pino
+
+There is deliberately no `service/` tier: this CLI has no business logic of its own.
+Every rule it enforces lives server-side, and each command handler is a thin
+orchestration over `repository/`. Adding an empty tier would be structure for its
+own sake — if command handlers ever grow real logic, split `run*` out into `service/`.
 tests/
 ├── unit/                 # vitest unit tests
 └── e2e/                  # not wired

@@ -217,13 +217,13 @@ jobs:
           export PATH="$HOME/go/bin:$PATH"
           # Proto codegen — same logic as `make proto`, but uses the system
           # python and grpc_tools installed above.
-          mkdir -p backend-python/app/infrastructure/grpc/gen
+          mkdir -p backend-python/app/repository/grpc/gen
           python -m grpc_tools.protoc \
             -I shared/proto \
             --go_out=. --go_opt=module=github.com/openrouter \
             --go-grpc_out=. --go-grpc_opt=module=github.com/openrouter \
-            --python_out=backend-python/app/infrastructure/grpc/gen \
-            --grpc_python_out=backend-python/app/infrastructure/grpc/gen \
+            --python_out=backend-python/app/repository/grpc/gen \
+            --grpc_python_out=backend-python/app/repository/grpc/gen \
             shared/proto/auth/v1/auth.proto \
             shared/proto/routing/v1/routing.proto \
             shared/proto/usage/v1/usage.proto

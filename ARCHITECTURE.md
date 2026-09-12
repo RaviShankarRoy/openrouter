@@ -86,7 +86,7 @@ Every service follows these. They are enforced by linters, CI, and code review.
   ```json
   {"error": {"message": "...", "type": "...", "code": "...", "param": "..."}}
   ```
-- **Internal:** Go uses wrapped `error` with `errors.Is/As`; Python defines a small `DomainError` hierarchy in `app/domain/errors.py`; never raise raw `Exception`.
+- **Internal:** Go uses wrapped `error` with `errors.Is/As`; Python defines a small `DomainError` hierarchy in `app/service/domain/errors.py`; never raise raw `Exception`.
 - **HTTP mapping:** see `shared/openapi/errors.yaml`.
 
 ### 2.6 Database

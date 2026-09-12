@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
-import { clientEnv, serverEnv } from "@/shared/config/env";
+import { clientEnv, serverEnv } from "@/service/config/env";
 
 // FE-012: Auth.js v5. JWT strategy keeps sessions stateless and lets us
 // attach role/org_id to the session object for RBAC checks.

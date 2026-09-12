@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.domain.value_objects import ModelPricing, Money, TokenCounts
+from app.service.domain.value_objects import ModelPricing, Money, TokenCounts
 
 
 def test_money_rejects_negative() -> None:

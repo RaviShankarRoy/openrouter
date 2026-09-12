@@ -28,7 +28,7 @@ prod: ## Run with gunicorn (production worker model)
 
 .PHONY: worker
 worker: ## Run Celery worker
-	$(PYTHON) -m celery -A app.infrastructure.celery_app worker -l info
+	$(PYTHON) -m celery -A app.repository.celery_app worker -l info
 
 .PHONY: grpc-serve
 grpc-serve: ## Run the standalone gRPC server (AuthService + RoutingService)
@@ -36,7 +36,7 @@ grpc-serve: ## Run the standalone gRPC server (AuthService + RoutingService)
 
 .PHONY: beat
 beat: ## Run Celery beat (scheduled tasks)
-	$(PYTHON) -m celery -A app.infrastructure.celery_app beat -l info
+	$(PYTHON) -m celery -A app.repository.celery_app beat -l info
 
 .PHONY: migrate
 migrate: ## Apply Alembic migrations

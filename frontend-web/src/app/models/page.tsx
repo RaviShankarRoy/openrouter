@@ -3,12 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import { modelRepository } from "@/entities/model/api";
-import type { Modality } from "@/entities/model/types";
-import { ModelCard } from "@/features/models/model-card/ModelCard";
-import { ModelFilter } from "@/features/models/model-filter/ModelFilter";
-import { Skeleton } from "@/shared/ui/skeleton";
-import { useDebounce } from "@/shared/hooks/use-debounce";
+import { modelRepository } from "@/repository/model";
+import type { Modality } from "@/service/model/model";
+import { ModelCard } from "@/api/components/models/ModelCard";
+import { ModelFilter } from "@/api/components/models/ModelFilter";
+import { Skeleton } from "@/api/ui/skeleton";
+import { useDebounce } from "@/service/hooks/use-debounce";
 
 // MK-001..010: marketplace. Phase 2 ranks by usage telemetry.
 export default function ModelsPage() {
@@ -23,7 +23,7 @@ export default function ModelsPage() {
   });
 
   const filtered = useMemo(() => {
-    const all = data?.data ?? [];
+    const all = data ?? [];
     return all.filter((m) => {
       const matchesQuery =
         debounced.length === 0 || m.id.toLowerCase().includes(debounced.toLowerCase());

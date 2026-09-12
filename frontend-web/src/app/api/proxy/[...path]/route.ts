@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-import { serverEnv } from "@/shared/config/env";
+import { clientEnv } from "@/service/config/env";
 
 // BFF: proxies the browser to the gateway with the user's session token.
 // Keeps the bearer token off the client where possible.
@@ -23,7 +23,7 @@ async function proxy(req: NextRequest, { params }: RouteParams) {
   }
 
   const { path } = await params;
-  const target = new URL(`${serverEnv.NEXT_PUBLIC_API_BASE_URL}/api/v1/${path.join("/")}`);
+  const target = new URL(`${clientEnv.NEXT_PUBLIC_API_BASE_URL}/api/v1/${path.join("/")}`);
   for (const [k, v] of req.nextUrl.searchParams) target.searchParams.set(k, v);
 
   const upstream = await fetch(target, {

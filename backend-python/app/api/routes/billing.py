@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.decorators import audit_log, require_permission
 from app.api.dependencies import AuthContext, get_current_auth, get_uow
-from app.application.uow import UnitOfWork
-from app.infrastructure.billing.stripe_client import StripeClient
+from app.service.uow import UnitOfWork
+from app.repository.billing.stripe_client import StripeClient
 
 router = APIRouter()
 

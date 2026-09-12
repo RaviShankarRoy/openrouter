@@ -16,7 +16,7 @@ Next.js 15 dashboard, marketing site, and developer playground for the OpenRoute
 - **Recharts** for usage graphs (FE-005)
 - **Monaco Editor** for the request builder (FE-007)
 
-## Layout — Feature-Sliced Design
+## Layout — Layered N-Tier
 
 ```
 src/
@@ -35,10 +35,10 @@ The dependency rule is one-directional: `app → widgets → features → entiti
 |---|---|---|
 | **React Server Components by default** | `src/app/**/page.tsx` | Less client JS, better SEO; mark `'use client'` only when interactivity is required |
 | **Server Actions** | `src/app/dashboard/keys/actions.ts` | Mutations without a separate API route (FE-004) |
-| **Compound Components** | `src/shared/ui/{tabs,dialog}.tsx` | Composable primitives via context |
-| **Custom Hooks** | `src/shared/hooks/` | Encapsulate stateful logic |
-| **Repository Pattern** | `src/shared/api/client.ts` + `src/entities/*/api.ts` | Hide transport from features |
-| **Provider Pattern** | `src/shared/providers/` | Cross-cutting concerns: auth, theme, query client |
+| **Compound Components** | `src/api/ui/{tabs,dialog}.tsx` | Composable primitives via context |
+| **Custom Hooks** | `src/service/hooks/` | Encapsulate stateful logic |
+| **Repository Pattern** | `src/repository/client.ts` + `src/service/model/*/api.ts` | Hide transport from features |
+| **Provider Pattern** | `src/service/providers/` | Cross-cutting concerns: auth, theme, query client |
 | **Container/Presenter** | e.g. `KeyList` (container) wraps a presentational table | Separates data fetching from rendering |
 
 ## Run
@@ -51,7 +51,7 @@ make start      # node .next/standalone/server.js
 make test       # vitest run
 make test-e2e   # playwright
 make lint       # eslint + tsc --noEmit
-make codegen    # regenerate src/shared/api/generated/schema.ts from ../shared/openapi/openapi.yaml
+make codegen    # regenerate src/repository/generated/schema.ts from ../shared/openapi/openapi.yaml
 make docker     # multi-stage docker build, < 200MB
 ```
 
@@ -62,7 +62,7 @@ Copy `.env.example` to `.env.local`. The Backend-For-Frontend route at `/api/pro
 ## Observability
 
 - **Tracing:** `instrumentation.ts` boots `@vercel/otel`; OTLP endpoint via `OTEL_EXPORTER_OTLP_ENDPOINT`.
-- **Logging:** `src/shared/lib/logger.ts` exports a pino instance; never log PII or raw API keys (ARCHITECTURE.md §2.2).
+- **Logging:** `src/shared/logger.ts` exports a pino instance; never log PII or raw API keys (ARCHITECTURE.md §2.2).
 - **Metrics:** Web Vitals are reported via `app/_vitals.ts` (TODO Phase 2).
 
 ## DRD requirement coverage
@@ -70,12 +70,12 @@ Copy `.env.example` to `.env.local`. The Backend-For-Frontend route at `/api/pro
 | Req | Path |
 |---|---|
 | FE-001 responsive | `app/page.tsx` + `globals.css` |
-| FE-002 dark mode | `features/theme/theme-toggle/` + `shared/providers/ThemeProvider.tsx` |
-| FE-003 streaming chat | `features/playground/chat/` + `shared/hooks/use-streaming-chat.ts` |
-| FE-004 API key UI | `app/dashboard/keys/` + `features/api-keys/` |
+| FE-002 dark mode | `api/components/theme/ThemeToggle.tsx` + `service/providers/ThemeProvider.tsx` |
+| FE-003 streaming chat | `api/components/playground/Chat.tsx` + `service/hooks/use-streaming-chat.ts` |
+| FE-004 API key UI | `app/dashboard/keys/` + `api/components/api-keys/` |
 | FE-005 usage charts | `app/dashboard/usage/` + `widgets/usage-chart/` |
-| FE-006 model comparison | `features/models/model-comparison/` |
-| FE-007 code snippets | `features/playground/code-snippets/` |
-| FE-010 billing UI | `app/dashboard/billing/` + `features/billing/` |
-| FE-012 OAuth | `app/api/auth/[...nextauth]/route.ts` + `features/auth/` |
+| FE-006 model comparison | `api/components/models/ModelComparison.tsx` |
+| FE-007 code snippets | `api/components/playground/CodeSnippets.tsx` |
+| FE-010 billing UI | `app/dashboard/billing/` + `api/components/billing/` |
+| FE-012 OAuth | `app/api/auth/[...nextauth]/route.ts` + `api/components/auth/` |
 | FE-015 OpenAPI docs | `app/docs/` (MDX-rendered) |

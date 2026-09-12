@@ -1,6 +1,6 @@
 # gateway-go
 
-The hot-path reverse proxy. Stateless, hexagonal architecture, sub-15µs target overhead.
+The hot-path reverse proxy. Stateless, layered n-tier architecture, sub-15µs target overhead.
 
 ## Layout
 
@@ -25,13 +25,13 @@ configs/providers.yaml       Hot-reloadable provider + model routing
 
 ## Design Patterns
 
-- **Hexagonal Architecture** (Ports & Adapters): domain in `internal/`, driven adapters in `internal/adapters/proxy/`, driving adapter in `internal/transport/http/`.
-- **Chain of Responsibility**: middleware pipeline in `internal/middleware/`.
-- **Strategy**: routing strategies in `internal/router/strategies/`.
-- **Adapter**: provider request/response normalization in `internal/proxy/adapters/`.
-- **Circuit Breaker**: per-(provider,model) breaker in `internal/circuitbreaker/`.
-- **Object Pool**: `sync.Pool` for streaming buffers in `internal/proxy/pool.go`.
-- **Factory**: HTTP client per provider lazily built in `internal/proxy/pool.go`.
+- **Layered N-Tier**: `internal/api/` (presentation) → `internal/service/` (business) → `internal/repository/` (data), plus `internal/shared/` for config, models, and observability. Imports point downward only.
+- **Chain of Responsibility**: middleware pipeline in `internal/api/middleware/`.
+- **Strategy**: routing strategies in `internal/service/strategies/`.
+- **Adapter**: provider request/response normalization in `internal/repository/adapters/`.
+- **Circuit Breaker**: per-(provider,model) breaker in `internal/service/circuitbreaker/`.
+- **Object Pool**: `sync.Pool` for streaming buffers in `internal/service/proxy/pool.go`.
+- **Factory**: HTTP client per provider lazily built in `internal/service/proxy/pool.go`.
 - **Observer**: health checks notify routing engine (Phase 2 — see `internal/health/`).
 
 ## Quick start
@@ -47,11 +47,11 @@ make docker    # scratch image, ~15MB
 
 | DRD ID | File |
 |---|---|
-| GW-001 OpenAI-compat endpoint | `internal/transport/http/handlers/handlers.go` ChatHandler |
-| GW-002 SSE streaming | `internal/proxy/proxy.go` send() stream branch |
-| GW-005 Connection pooling | `internal/proxy/pool.go` clientPool |
-| GW-006 Async logging | `internal/middleware/chain.go` Logger (NATS publish in Phase 1) |
-| GW-008 Health endpoint | `internal/transport/http/handlers/handlers.go` Ready |
-| GW-013 Auth via Redis | `internal/auth/cache.go` |
-| GW-014 Rate limit | `internal/ratelimit/limiter.go` |
-| GW-015 Hot-reload routing | `internal/router/router.go` Swap() + SIGHUP in main |
+| GW-001 OpenAI-compat endpoint | `internal/api/handlers/handlers.go` ChatHandler |
+| GW-002 SSE streaming | `internal/service/proxy/proxy.go` send() stream branch |
+| GW-005 Connection pooling | `internal/service/proxy/pool.go` clientPool |
+| GW-006 Async logging | `internal/api/middleware/chain.go` Logger (NATS publish in Phase 1) |
+| GW-008 Health endpoint | `internal/api/handlers/handlers.go` Ready |
+| GW-013 Auth via Redis | `internal/repository/auth/cache.go` |
+| GW-014 Rate limit | `internal/service/ratelimit/limiter.go` |
+| GW-015 Hot-reload routing | `internal/service/router/router.go` Swap() + SIGHUP in main |
