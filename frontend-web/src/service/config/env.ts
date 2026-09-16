@@ -26,15 +26,27 @@ const clientSchema = z.object({
 
 const isServer = typeof window === "undefined";
 
-export const clientEnv = clientSchema.parse({
-  NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
-  NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
-  NEXT_PUBLIC_SERVICE_VERSION: process.env.NEXT_PUBLIC_SERVICE_VERSION,
-  NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-});
+// A var that is *set but empty* is not `undefined`, so zod skips `.default()`
+// and `.url()` then rejects "". That is exactly what a Dockerfile produces with
+// `ARG FOO` + `ENV FOO=$FOO` when no --build-arg is passed, which broke
+// `docker build frontend-web` (and `make docker`). Treat blank as unset.
+function withoutBlanks<T extends object>(input: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, v]) => !(typeof v === "string" && v.trim() === "")),
+  ) as Partial<T>;
+}
 
-export const serverEnv = isServer ? serverSchema.parse(process.env) : null;
+export const clientEnv = clientSchema.parse(
+  withoutBlanks({
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
+    NEXT_PUBLIC_SERVICE_VERSION: process.env.NEXT_PUBLIC_SERVICE_VERSION,
+    NEXT_PUBLIC_ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+  }),
+);
+
+export const serverEnv = isServer ? serverSchema.parse(withoutBlanks(process.env)) : null;
 
 export type ClientEnv = z.infer<typeof clientSchema>;
 export type ServerEnv = z.infer<typeof serverSchema>;
