@@ -48,5 +48,9 @@ miniodata/
 # Generated
 shared/proto/gen/
 shared/openapi/gen/
-gateway-go/internal/repository/proto/
-backend-python/app/repository/grpc/gen/
+# Generated gRPC stubs ARE committed: the Docker build context is gateway-go/
+# only, so it cannot reach shared/proto/ to regenerate them. Committing them
+# (standard practice for protobuf) lets any machine build without protoc.
+# Regenerate with `make proto` after editing shared/proto/*.proto.
+#gateway-go/internal/repository/proto/
+#backend-python/app/repository/grpc/gen/

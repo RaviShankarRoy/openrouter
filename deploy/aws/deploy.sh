@@ -49,8 +49,17 @@ echo "==> Container status:"
 DOMAIN="$(grep -E '^DOMAIN=' "$ENVFILE" | cut -d= -f2)"
 echo
 echo "==> Health checks (from inside the network):"
-"${COMPOSE[@]}" exec -T gateway sh -c 'exit 0' 2>/dev/null \
-  && echo "    gateway container: running" || echo "    gateway container: NOT RUNNING"
+# The gateway image is FROM scratch — no shell, so `exec ... sh` can never work.
+# Check its container state instead, then probe /health from caddy, which shares
+# the compose network and does have wget.
+GW_ID="$("${COMPOSE[@]}" ps -q gateway 2>/dev/null || true)"
+if [ -n "$GW_ID" ] && [ "$(docker inspect -f '{{.State.Running}}' "$GW_ID" 2>/dev/null)" = "true" ]; then
+  echo "    gateway container: running"
+else
+  echo "    gateway container: NOT RUNNING"
+fi
+"${COMPOSE[@]}" exec -T caddy wget -q -O- http://gateway:8080/health >/dev/null 2>&1 \
+  && echo "    gateway /health:   OK" || echo "    gateway /health:   FAILED (check: ${COMPOSE[*]} logs gateway)"
 "${COMPOSE[@]}" exec -T backend curl -fsS http://localhost:8000/health >/dev/null 2>&1 \
   && echo "    backend /health:   OK" || echo "    backend /health:   FAILED (check: ${COMPOSE[*]} logs backend)"
 
