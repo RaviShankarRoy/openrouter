@@ -74,7 +74,13 @@ fmt:
 
 .PHONY: build
 build:
-	$(PYTHON) -m pip wheel --no-deps -w dist .
+# `install` above prefers uv, and a uv-created venv has no pip — so the
+# pip path below is unreachable for uv users. Mirror install's fallback.
+	@if command -v $(UV) >/dev/null; then \
+		$(UV) build --wheel --out-dir dist; \
+	else \
+		$(PYTHON) -m pip wheel --no-deps -w dist .; \
+	fi
 
 .PHONY: clean
 clean:
