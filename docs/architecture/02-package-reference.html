@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Package Reference</title>
+<meta name="description" content="Every package and module in all four services: what it contains, what it may import, and what depends on it.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%93%A6</text></svg>">
+<link rel="stylesheet" href="_style.css">
+</head>
+<body>
+<div class="shell">
+
+<header class="masthead">
+  <p class="kicker">Architecture set · 2 of 3</p>
+  <h1>Package Reference</h1>
+  <p class="standfirst">Every package and module in the repository — what it holds, what it is allowed to import, and who depends on it. The map you need before you add or move code.</p>
+  <div class="facts">
+    <span><b>17</b> Go packages</span>
+    <span><b>20</b> Python modules</span>
+    <span><b>6</b> frontend layers</span>
+    <span><b>4</b> CLI layers</span>
+  </div>
+  <div class="navset">
+    <a href="01-system-architecture.html">1 · System Architecture</a>
+    <a href="02-package-reference.html" aria-current="page">2 · Package Reference</a>
+    <a href="03-language-boundaries.html">3 · Language Boundaries</a>
+  </div>
+</header>
+
+<nav class="rail" aria-label="Contents">
+  <p class="rail-head">Contents</p>
+  <ol>
+    <li><a href="#p0"><span class="n">00</span><span class="grp">How to read this</span></a></li>
+    <li><a href="#p1"><span class="n">01</span><span class="grp">gateway-go</span></a></li>
+    <li><a href="#g-cmd"><span class="n">1.1</span><span>cmd/</span></a></li>
+    <li><a href="#g-api"><span class="n">1.2</span><span>internal/api/</span></a></li>
+    <li><a href="#g-svc"><span class="n">1.3</span><span>internal/service/</span></a></li>
+    <li><a href="#g-repo"><span class="n">1.4</span><span>internal/repository/</span></a></li>
+    <li><a href="#g-shared"><span class="n">1.5</span><span>internal/shared/</span></a></li>
+    <li><a href="#p2"><span class="n">02</span><span class="grp">backend-python</span></a></li>
+    <li><a href="#py-entry"><span class="n">2.1</span><span>entrypoints</span></a></li>
+    <li><a href="#py-api"><span class="n">2.2</span><span>app/api/</span></a></li>
+    <li><a href="#py-svc"><span class="n">2.3</span><span>app/service/</span></a></li>
+    <li><a href="#py-repo"><span class="n">2.4</span><span>app/repository/</span></a></li>
+    <li><a href="#py-shared"><span class="n">2.5</span><span>app/shared/</span></a></li>
+    <li><a href="#p3"><span class="n">03</span><span class="grp">frontend-web</span></a></li>
+    <li><a href="#p4"><span class="n">04</span><span class="grp">cli</span></a></li>
+    <li><a href="#p5"><span class="n">05</span><span class="grp">shared contracts</span></a></li>
+    <li><a href="#p6"><span class="n">06</span><span class="grp">infrastructure</span></a></li>
+    <li><a href="#p7"><span class="n">07</span><span class="grp">Import rules</span></a></li>
+  </ol>
+</nav>
+
+<main class="doc">
+
+<section class="part" id="p0">
+  <h2><span class="n">00</span> How to read this</h2>
+
+  <p class="lede">Packages are grouped by service, then by tier. Within a tier they are listed in dependency order — the thing that depends on nothing comes first.</p>
+
+  <p>Each entry gives four things: <b>purpose</b> (one sentence on why the package exists), <b>contents</b> (the files and what each does), <b>imports</b> (what it is permitted to depend on), and <b>used by</b> (who depends on it). If you are adding a file, the tier it belongs to is determined by what it needs to import — see §07.</p>
+
+  <div class="box repo">
+    <span class="lbl">Tier legend</span>
+    <p><span class="chip nn">api</span> delivery — speaks HTTP/CLI/React, converts between wire shapes and domain calls.<br>
+    <span class="chip nn">service</span> business logic — use cases, entities, algorithms. Performs no I/O of its own.<br>
+    <span class="chip nn">repository</span> mechanism — databases, caches, queues, HTTP clients, SDKs, generated code.<br>
+    <span class="chip nn">shared</span> cross-cutting — config, logging, crypto, behaviourless types. Depends on nothing internal.</p>
+  </div>
+</section>
+
+<!-- ══════════ GO ══════════ -->
+<section class="part" id="p1">
+  <h2><span class="n">01</span> gateway-go</h2>
+  <p class="lede">17 packages. Go's <code>internal/</code> convention means nothing outside this module can import any of them, so the package boundaries are enforced by the compiler rather than by convention.</p>
+
+  <div class="sec" id="g-cmd">
+    <h3><span class="n">1.1</span> cmd/ — entrypoints</h3>
+
+    <div class="tw"><table>
+      <thead><tr><th>Package</th><th>Purpose &amp; contents</th><th>Imports</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="nw"><code>cmd/gateway</code><br>92 lines</td>
+          <td><b>The composition root.</b> <code>main.go</code> does exactly five things: load config, build a logger, start tracing, construct the server, handle signals. It contains no business logic and no wiring decisions beyond calling <code>server.New</code>.<br>Splits <code>main()</code> from <code>run() error</code> so <code>defer</code> actually executes — <code>os.Exit</code> skips deferred calls. Distinguishes SIGHUP (reload, continue) from SIGINT/SIGTERM (cancel, 30 s drain).</td>
+          <td><code>shared/config</code><br><code>shared/observability</code><br><code>api/server</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>cmd/grpc-e2e</code><br>52 lines</td>
+          <td><b>A connectivity smoke test.</b> Dials the backend's <code>AuthService</code>, calls <code>ValidateKey</code> with a deliberately bogus hash, and asserts the reply is <code>valid=false reason="unknown_key"</code>. Exits non-zero on anything else. Useful in CI and during incident triage to separate "gRPC is broken" from "the HTTP path is broken".</td>
+          <td><code>repository/proto/auth/v1</code></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sec" id="g-api">
+    <h3><span class="n">1.2</span> internal/api/ — delivery <span class="chip nn">api</span></h3>
+
+    <div class="tw"><table>
+      <thead><tr><th>Package</th><th>Purpose &amp; contents</th><th>Imports</th><th>Used by</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="nw"><code>api/server</code><br>200 lines</td>
+          <td><b>Wiring and routing.</b> <code>server.New</code> constructs every component in dependency order and is the only place that knows which concrete type satisfies which interface. <code>buildHTTPServer</code> declares the middleware order once — that declaration is the authoritative statement of the request pipeline.<br>Mounts <code>/health</code> and <code>/ready</code> <em>outside</em> the authenticated subtree, because probes carry no API key. Runs a second <code>http.Server</code> for <code>/metrics</code> on its own port so scrape traffic cannot contend with requests. <code>ReloadConfig</code> handles SIGHUP.</td>
+          <td>everything</td>
+          <td><code>cmd/gateway</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>api/middleware</code><br>253 lines</td>
+          <td><b>The chain.</b> <code>chain.go</code> holds RequestID, Recoverer, Logger and Tracing plus the private <code>ctxKey</code> type that prevents context-value collisions. <code>auth.go</code> extracts the bearer token, hashes it, consults the cache and deposits an <code>Identity</code> into the context. <code>ratelimit.go</code> calls the limiter, sets the three <code>X-RateLimit-*</code> headers and returns 429 with <code>Retry-After</code>.<br>Each middleware is an <code>http.Handler</code> decorator, so they nest without knowing about each other.</td>
+          <td><code>repository/auth</code><br><code>service/ratelimit</code></td>
+          <td><code>api/server</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>api/handlers</code><br>218 lines</td>
+          <td><b>Thin HTTP adapters.</b> <code>handlers.go</code> has the chat handler (body cap, minimal parse, cache lookup, SSE header setup, proxy call) plus <code>Health</code> and <code>Ready</code>. <code>passthrough.go</code> has embeddings, images, audio and rerank — four types sharing one <code>proxyTo</code> helper, kept separate so each can later grow its own metrics and SLO — and the backend-delegated video and models handlers, currently stubs returning 501.<br>Parses only <code>model</code> and <code>stream</code> and forwards the original bytes, so new provider parameters work without a gateway change.</td>
+          <td><code>repository/cache</code><br><code>service/proxy</code></td>
+          <td><code>api/server</code></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sec" id="g-svc">
+    <h3><span class="n">1.3</span> internal/service/ — business logic <span class="chip nn">service</span></h3>
+
+    <div class="tw"><table>
+      <thead><tr><th>Package</th><th>Purpose &amp; contents</th><th>Imports</th><th>Used by</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="nw"><code>service/router</code><br>79 lines</td>
+          <td><b>Model → provider resolution.</b> Parses <code>providers.yaml</code> into an immutable <code>state</code> held behind an <code>atomic.Pointer</code>. <code>Resolve</code> returns a primary <code>Target</code> plus the fallback chain with a single unsynchronised load — no lock on the hot path. <code>Swap</code> replaces the pointer atomically on SIGHUP; in-flight requests keep the snapshot they started with, and Go's GC frees the old one when the last reader drops it.</td>
+          <td><code>shared/model</code></td>
+          <td><code>service/proxy</code><br><code>api/server</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>service/proxy</code><br>269 lines</td>
+          <td><b>The outbound call.</b> <code>proxy.go</code> walks the fallback chain, wraps each attempt in that target's circuit breaker, normalises through the adapter, sends, and either buffers or streams the response. <code>pool.go</code> keeps one tuned <code>http.Client</code> per provider (HTTP/2 forced, <code>MaxIdleConnsPerHost</code> 50 — Go's default of 2 would collapse throughput) plus a <code>sync.Pool</code> of 32 KB streaming buffers.</td>
+          <td><code>service/router</code><br><code>service/circuitbreaker</code><br><code>repository/adapters</code><br><code>shared/model</code></td>
+          <td><code>api/handlers</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>service/ratelimit</code><br>109 lines</td>
+          <td><b>Sliding-window limiting.</b> A <code>Limiter</code> interface plus a Redis implementation. The window is a sorted set manipulated by one Lua script — <code>ZREMRANGEBYSCORE</code>, <code>ZCARD</code>, <code>ZADD</code>, <code>PEXPIRE</code> — executed atomically so the check-then-act race cannot occur across replicas. A policy of zero requests per minute short-circuits to "unlimited" without touching Redis.<br>Technically a <em>sliding log</em>: it stores one member per request, so memory per key scales with the configured limit.</td>
+          <td>go-redis</td>
+          <td><code>api/middleware</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>service/circuitbreaker</code><br>56 lines</td>
+          <td><b>Failure isolation.</b> A concurrent map of <code>sony/gobreaker</code> instances keyed <code>provider:model</code>, populated lazily under double-checked locking. Defaults: trip after 5 consecutive failures, stay open 30 s, then admit 3 half-open probes. One breaker per model rather than per provider, so a degraded model does not cut off healthy ones on the same vendor.</td>
+          <td>gobreaker</td>
+          <td><code>service/proxy</code><br><code>api/server</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>service/strategies</code><br>101 lines</td>
+          <td><b>Pluggable routing algorithms.</b> A <code>Strategy</code> interface (<code>Name</code>, <code>Order</code>) with <code>Cost</code> and <code>Latency</code> implementations and a name-keyed <code>Registry</code>. Both sort a <em>copy</em> with <code>sort.SliceStable</code>, so ordering is deterministic and the caller's slice is never mutated. Their data sources are interfaces (<code>PricingLookup</code>, <code>ScoreLookup</code>), so production reads Redis and a test passes a literal.<br><span class="chip bad">not wired</span> Nothing constructs the registry; <code>Resolve</code> returns the YAML order as written.</td>
+          <td><code>shared/model</code></td>
+          <td>— nothing yet</td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sec" id="g-repo">
+    <h3><span class="n">1.4</span> internal/repository/ — mechanism <span class="chip nn">repository</span></h3>
+
+    <div class="tw"><table>
+      <thead><tr><th>Package</th><th>Purpose &amp; contents</th><th>Imports</th><th>Used by</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="nw"><code>repository/auth</code><br>329 lines</td>
+          <td><b>The three-layer key cache.</b> <code>cache.go</code> defines a one-method <code>Loader</code> interface and a cache that tries loaders in order, writes the result back, and negatively caches misses so key-guessing floods cannot reach PostgreSQL. <code>loaders.go</code> supplies the Redis loader (translating <code>redis.Nil</code> into the domain's <code>ErrCacheMiss</code>) and the backend loader (2 s deadline derived from the request context). <code>grpc_client.go</code> dials lazily under <code>sync.Once</code> so an unhealthy backend cannot block startup.<br><span class="chip warn">note</span> Eviction deletes an arbitrary map entry, not the least-recently-used one — the file says so and names the fix.</td>
+          <td><code>repository/proto/auth/v1</code><br>go-redis, grpc</td>
+          <td><code>api/middleware</code><br><code>api/server</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>repository/cache</code><br>81 lines</td>
+          <td><b>L1 exact-match response cache.</b> An <code>ExactCache</code> interface over Redis. <code>HashRequest</code> builds the key as <code>SHA-256(model ‖ 0x00 ‖ body)</code> — the null separator prevents boundary collisions, where <code>("ab","c")</code> and <code>("a","bc")</code> would otherwise hash identically. <code>Get</code> returns <code>(Entry, bool, error)</code> so a miss is never confused with an outage.<br><span class="chip bad">read-only</span> <code>Put</code> is implemented and never called.</td>
+          <td>go-redis</td>
+          <td><code>api/handlers</code><br><code>api/server</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>repository/adapters</code><br>587 lines</td>
+          <td><b>Protocol translation.</b> <code>adapter.go</code> defines <code>ProviderAdapter</code> and <code>StreamTranslator</code>, plus a passthrough translator for providers that already speak OpenAI SSE. <code>openai.go</code> is nearly empty by design — the canonical format <em>is</em> OpenAI — and is reused by Together, Fireworks and Ollama. <code>anthropic.go</code> is the substantial one: system-message hoisting, mandatory <code>max_tokens</code>, header differences, response normalisation, and a genuine SSE state machine that buffers partial lines across chunk boundaries. <code>google.go</code> is a Phase-3 stub.<br><code>NewStreamTranslator()</code> returns a fresh instance per request because it carries per-stream state.</td>
+          <td><code>shared/model</code></td>
+          <td><code>service/proxy</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>repository/proto</code><br>1,771 lines, generated</td>
+          <td><b>Generated gRPC stubs</b> for auth, routing and usage. Produced by <code>make proto</code> from <code>shared/proto/</code>. Gitignored — a fresh clone must run codegen before the module compiles.</td>
+          <td>protobuf, grpc</td>
+          <td><code>repository/auth</code><br><code>cmd/grpc-e2e</code></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sec" id="g-shared">
+    <h3><span class="n">1.5</span> internal/shared/ — cross-cutting <span class="chip nn">shared</span></h3>
+
+    <div class="tw"><table>
+      <thead><tr><th>Package</th><th>Purpose &amp; contents</th><th>Imports</th><th>Used by</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="nw"><code>shared/model</code><br>~40 lines</td>
+          <td><b>The anti-coupling package, and the most instructive file in the Go tree.</b> Holds <code>Target</code>, <code>ModelEntry</code> and <code>ProviderConfig</code> — data structures with <em>no behaviour</em>.<br>Its reason to exist is stated in its own doc comment: <code>repository/adapters</code> needs a <code>ProviderConfig</code> to build an upstream request, but importing <code>service/router</code> to get it would be an upward dependency from repository to service, breaking the tier rule. Moving the shape into <code>shared</code> lets all three tiers speak the same vocabulary while none imports another.</td>
+          <td>nothing</td>
+          <td><code>service/router</code><br><code>service/proxy</code><br><code>service/strategies</code><br><code>repository/adapters</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>shared/config</code><br>171 lines</td>
+          <td><b>Layered configuration.</b> koanf merges defaults → optional YAML → <code>GATEWAY_*</code> environment variables, where underscores become path separators. <code>validate()</code> rejects a bad port or a missing Redis/backend address at startup. Durations are parsed from strings (<code>"30s"</code>), which removes the seconds-or-milliseconds ambiguity. <code>env.go</code> isolates <code>os.Getenv</code> behind a variable so tests can substitute it.</td>
+          <td>koanf</td>
+          <td><code>cmd/gateway</code><br><code>api/server</code><br><code>shared/observability</code></td>
+        </tr>
+        <tr>
+          <td class="nw"><code>shared/observability</code><br>113 lines</td>
+          <td><b>Logging, tracing and metric definitions.</b> <code>observability.go</code> builds an <code>slog</code> logger (text in dev, JSON in prod) and an OTLP tracer provider with a <code>ParentBased(TraceIDRatioBased)</code> sampler. <code>metrics.go</code> declares seven Prometheus collectors with deliberate label discipline — never <code>user_id</code> or <code>request_id</code>.<br><span class="chip bad">not wired</span> No propagator is registered, and no collector is ever incremented.</td>
+          <td><code>shared/config</code><br>otel, prometheus</td>
+          <td><code>cmd/gateway</code></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- ══════════ PYTHON ══════════ -->
+<section class="part" id="p2">
+  <h2><span class="n">02</span> backend-python</h2>
+  <p class="lede">The same four tiers, expressed as packages under <code>app/</code>. Python has no compiler-enforced visibility, so the rule is upheld by convention and review.</p>
+
+  <div class="sec" id="py-entry">
+    <h3><span class="n">2.1</span> Entrypoints</h3>
+    <div class="tw"><table>
+      <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>app/main.py</code><br>102 lines</td><td><b>The FastAPI application.</b> An <code>@asynccontextmanager</code> lifespan opens connections in order (logging → tracing → DB → Redis → NATS) and tears them down in reverse; <code>create_app()</code> assembles CORS, middleware, exception handlers, routers and the Prometheus mount. Also installs a SIGHUP handler that reloads <code>routing.yaml</code>, mirroring the Go gateway's behaviour so one operational gesture works on both services.</td></tr>
+        <tr><td class="nw"><code>app/grpc_main.py</code><br>58 lines</td><td><b>The gRPC server, as its own process.</b> Deliberately separate from the HTTP workers because the two scale on different signals — HTTP on request rate, gRPC on auth cache-miss volume. Same startup sequence, then serves until SIGTERM with a 5 s grace.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sec" id="py-api">
+    <h3><span class="n">2.2</span> app/api/ — delivery <span class="chip nn">api</span></h3>
+    <div class="tw"><table>
+      <thead><tr><th>Module</th><th>Purpose &amp; contents</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>api/routes/</code><br>7 modules</td><td><b>One router per bounded context</b>, registered with prefixes in <code>__init__.py</code>. <code>health</code> is unversioned (probes); everything else is under <code>/v1</code>. <code>auth</code> issues, lists and revokes keys. <code>billing</code> serves balance, top-up intents and usage. <code>models</code> is the catalogue. <code>oauth</code> exchanges a provider token for a backend JWT. <code>webhooks</code> takes Stripe callbacks. <code>admin</code> holds RBAC-restricted operations.<br>Every route declares separate request and response models, which is what keeps <code>key_hash</code> from ever being serialisable into a response.</td></tr>
+        <tr><td class="nw"><code>api/dependencies.py</code><br>117 lines</td><td><b>Dependency injection.</b> FastAPI's <code>Depends()</code> <em>is</em> the container — no third-party library. Provides a per-request Unit of Work, service factories, <code>get_current_auth</code> (bearer → SHA-256 → row → argon2 verify → <code>AuthContext</code>), and <code>require_role(*roles)</code>, a dependency <em>factory</em> returning a closure.<br><span class="chip bad">hot spot</span> <code>get_current_auth</code> runs a 64 MB argon2 verify inline on every call with no cache.</td></tr>
+        <tr><td class="nw"><code>api/decorators.py</code><br>115 lines</td><td><b>Cross-cutting concerns.</b> <code>@require_permission</code> checks a role→permission map and fails closed if no <code>AuthContext</code> is found among the injected kwargs. <code>@audit_log</code> writes an <code>audit_logs</code> row after the handler succeeds, in its own try/except so an audit failure cannot break a user request. Both use <code>functools.wraps</code> — without it FastAPI's signature introspection sees <code>(*args, **kwargs)</code> and injects nothing.</td></tr>
+        <tr><td class="nw"><code>api/errors.py</code><br>66 lines</td><td><b>Error translation.</b> Four handlers — domain errors, validation errors, HTTP exceptions, and a catch-all — all emitting the same OpenAI envelope. Domain errors log at <code>info</code> (they are expected outcomes); unhandled ones log a stack trace and return a generic 500 that leaks no class names or paths.</td></tr>
+        <tr><td class="nw"><code>api/middleware.py</code><br>66 lines</td><td><b>Request context.</b> Stamps a request id, binds it plus method and path into structlog contextvars for the request's duration, times the request, and echoes the id on the response. Also activates OTel auto-instrumentation for FastAPI and SQLAlchemy.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sec" id="py-svc">
+    <h3><span class="n">2.3</span> app/service/ — business logic <span class="chip nn">service</span></h3>
+    <div class="tw"><table>
+      <thead><tr><th>Module</th><th>Purpose &amp; contents</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>service/domain/</code><br>4 modules</td><td><b>The pure core — imports no framework at all.</b><br><code>entities.py</code>: rich models with behaviour beside the data — <code>APIKey.assert_usable()</code>, <code>assert_model_allowed()</code>, <code>CreditBalance.reserve()/settle()</code>. The <code>assert_*</code> naming raises rather than returning a bool, so a caller cannot silently ignore the check.<br><code>value_objects.py</code>: frozen, slotted <code>Money</code>, <code>TokenCounts</code>, <code>ModelPricing</code>. <code>Money</code> refuses to be negative at construction, so a negative amount cannot exist anywhere in the program.<br><code>errors.py</code>: a <code>DomainError</code> hierarchy where each subclass carries its own <code>code</code> and <code>http_status</code>.<br><code>repositories.py</code>: abstract base classes named after business intent — <code>find_by_lookup_hash</code>, not <code>select_by_column</code>. These are the interfaces the repository tier implements.</td></tr>
+        <tr><td class="nw"><code>service/auth_service.py</code><br>77 lines</td><td><b>API key lifecycle.</b> <code>create_key</code> generates 256 bits from the CSPRNG, hashes it twice, persists, and returns the plaintext exactly once. <code>validate_for_request</code> is the two-hash scheme in four lines. <code>revoke_key</code> marks the row.</td></tr>
+        <tr><td class="nw"><code>service/billing_service.py</code><br>54 lines</td><td><b>Metering.</b> Prices a request through the <code>ModelPricing</code> value object, deducts atomically, appends a usage row — all inside one Unit of Work. Cache hits cost zero, and that rule lives in exactly one place.</td></tr>
+        <tr><td class="nw"><code>service/oauth_service.py</code><br>128 lines</td><td><b>Token exchange.</b> Resolves the caller's email from Google or GitHub, find-or-creates a User and Organization, and mints a short-lived backend JWT. Uses GitHub's <code>/user/emails</code> rather than <code>/user</code>, because a profile email can be hidden but the emails endpoint always returns the verified primary.</td></tr>
+        <tr><td class="nw"><code>service/uow.py</code><br>42 lines</td><td><b>The Unit of Work interface.</b> Declares the transactional boundary the repository tier implements — six repositories sharing one session.</td></tr>
+        <tr><td class="nw"><code>service/routing/</code><br>2 modules</td><td><b>Semantic routing for <code>openrouter/auto</code>.</b> <code>config.py</code> loads and caches the candidate pool and implements <code>filter()</code> — capabilities, geography, residency, quality floor, latency ceiling — using set operations that read as the business rule they encode. <code>reload_routing_config()</code> validates <em>before</em> clearing the cache, so a broken YAML leaves the old config serving. <code>strategies.py</code> holds Cost, Latency and Quality strategies behind a registry.</td></tr>
+        <tr><td class="nw"><code>service/guardrails/</code><br>2 modules</td><td><b>Input/output validation pipeline.</b> <code>pipeline.py</code> is a Chain of Responsibility with three outcomes rather than two — pass, block (short-circuit), or <em>redact</em> (rewrite and continue), which is what makes it a pipeline. <code>guards.py</code> ships honest stubs (token limit, PII regex, injection phrases) each naming the real library it stands in for.</td></tr>
+        <tr><td class="nw"><code>service/mcp/</code><br>3 modules</td><td><b>Model Context Protocol scaffolding.</b> A server exposing gateway capabilities as tools, a client for calling external tool servers, and a per-org tool registry with federated OAuth. Interfaces only — Phase 4.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sec" id="py-repo">
+    <h3><span class="n">2.4</span> app/repository/ — mechanism <span class="chip nn">repository</span></h3>
+    <div class="tw"><table>
+      <thead><tr><th>Module</th><th>Purpose &amp; contents</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>database.py</code><br>57 lines</td><td>Async SQLAlchemy engine and session factory. Fixes a constraint <b>naming convention</b> so Alembic produces deterministic, portable names. <code>pool_pre_ping=True</code> replaces connections killed by idle firewalls. <code>expire_on_commit=False</code> because a lazy reload after commit raises in async code.</td></tr>
+        <tr><td class="nw"><code>orm_models.py</code><br>154 lines</td><td>SQLAlchemy 2.0 typed models — <b>separate from domain entities</b>. Data Mapper: each repository has a private <code>_to_domain(row)</code> translator, so the schema and the business model evolve independently.</td></tr>
+        <tr><td class="nw"><code>uow.py</code><br>55 lines</td><td>The SQLAlchemy Unit of Work. Repositories are constructed inside <code>__aenter__</code>, so holding one with a stale session is impossible. Rollback is automatic on exception; commit is explicit. <code>close()</code> runs in a <code>finally</code>, so connections return to the pool on every path.</td></tr>
+        <tr><td class="nw"><code>api_keys.py</code> <code>users.py</code> <code>organizations.py</code> <code>credits.py</code> <code>usage.py</code> <code>video_jobs.py</code></td><td>Six repository implementations. <code>credits.py</code> is the one to read: <code>deduct_atomic</code> puts the invariant in the <code>WHERE</code> clause and returns a bool from <code>rowcount</code>, which is what makes concurrent deduction safe without explicit locking.</td></tr>
+        <tr><td class="nw"><code>redis_client.py</code></td><td>One shared async Redis client with the pool size actually applied. Raw bytes, callers decode.</td></tr>
+        <tr><td class="nw"><code>providers/</code><br>7 modules</td><td><b>Provider SDK adapters.</b> <code>base.py</code> declares the six-method contract (complete, stream, count_tokens, health_check, pricing, modalities) over unified dataclasses. <code>openai_adapter.py</code> is the reference; <code>gemma_adapter.py</code> and <code>qwen_adapter.py</code> subclass it and override three class attributes, because Fireworks and Together speak the OpenAI wire format — that is the entire cost of adding an OpenAI-compatible provider. <code>anthropic_adapter.py</code> is a full rewrite. <code>registry.py</code> is a singleton lookup; <code>bootstrap.py</code> is the factory that populates it.<br><span class="chip bad">not wired</span> <code>bootstrap.register_providers()</code> is never called from <code>app/</code>.</td></tr>
+        <tr><td class="nw"><code>grpc/</code><br>3 modules + gen/</td><td><code>server.py</code> builds the async gRPC server with 16 MB message limits. <code>auth_servicer.py</code> implements <code>ValidateKey</code>. <code>routing_servicer.py</code> implements <code>ResolveModel</code> and <code>ProviderScores</code>, returning a sentinel model rather than an error when every candidate is filtered out. Generated stubs are imported lazily inside try/except so unit tests run before codegen.</td></tr>
+        <tr><td class="nw"><code>billing/</code><br>2 modules</td><td><code>stripe_client.py</code> wraps the synchronous Stripe SDK in <code>asyncio.to_thread</code> so it cannot block the event loop, converts money to integer cents, and attaches <code>org_id</code> as PaymentIntent metadata — the join key the webhook later needs. <code>pricing_repository.py</code> is a cache-aside read: Redis, then PostgreSQL, then write back with a 60 s TTL.</td></tr>
+        <tr><td class="nw"><code>events/bus.py</code></td><td>NATS JetStream connection, stream creation, and a fire-and-forget publish. <code>drain()</code> on shutdown flushes pending publishes rather than dropping them.</td></tr>
+        <tr><td class="nw"><code>celery_app.py</code> + <code>tasks/</code></td><td>Durable job queue. <code>acks_late</code> (at-least-once, so tasks must be idempotent) and <code>prefetch_multiplier=1</code> (fairness over throughput). JSON serialisation, never pickle. Tasks: the three-stage video pipeline, HMAC-signed outbound webhooks with ~10 h of jittered backoff, and nightly billing aggregation.</td></tr>
+        <tr><td class="nw"><code>storage/s3_client.py</code></td><td>aioboto3 wrapper for uploads and 24 h presigned URLs. Contains <code>_AsyncIterReader</code>, an adapter bridging an async byte iterator to boto's file-like <code>read(size)</code> — the same buffering discipline as the SSE translator, one layer out.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="sec" id="py-shared">
+    <h3><span class="n">2.5</span> app/shared/ — cross-cutting <span class="chip nn">shared</span></h3>
+    <div class="tw"><table>
+      <thead><tr><th>Module</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>shared/config.py</code></td><td>pydantic-settings. Every secret is a <code>SecretStr</code>, whose <code>__repr__</code> prints asterisks — so the real value requires an explicit <code>.get_secret_value()</code>, which is both a safety net and a grep target. <code>@lru_cache</code> makes it a singleton.</td></tr>
+        <tr><td class="nw"><code>shared/security.py</code></td><td>The crypto primitives, all pure functions with no I/O: argon2id hashing and verification, the SHA-256 lookup digest, CSPRNG key generation with the <code>sk-or-v1-</code> prefix, and JWT encode/decode pinned to HS256.</td></tr>
+        <tr><td class="nw"><code>shared/logging.py</code></td><td>structlog processor pipeline — contextvars merge, level, ISO UTC timestamp, exception formatting, then a console renderer in dev or secret scrubbing plus JSON in prod.</td></tr>
+        <tr><td class="nw"><code>shared/tracing.py</code></td><td>OTel provider with an OTLP exporter and a <code>ParentBased(TraceIdRatioBased)</code> sampler.</td></tr>
+      </tbody>
+    </table></div>
+
+    <p>Supporting: <code>alembic/</code> holds the two migrations — the initial eight-table schema (which also enables <code>vector</code> and <code>uuid-ossp</code>) and a Gemma/Qwen pricing seed. <code>configs/routing.yaml</code> is the <code>openrouter/auto</code> candidate pool. <code>tests/</code> splits unit tests (fakes, no I/O) from integration tests (testcontainers and <code>respx</code>).</p>
+  </div>
+</section>
+
+<!-- ══════════ FRONTEND ══════════ -->
+<section class="part" id="p3">
+  <h2><span class="n">03</span> frontend-web</h2>
+  <p class="lede">The same tiers, plus <code>src/app/</code> which Next.js imposes. Six top-level folders in total.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Folder</th><th>Tier</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="nw"><code>src/app/</code></td><td><span class="chip nn">api</span></td>
+        <td><b>Routing, by Next.js file convention.</b> Each folder is a URL segment. <code>(marketing)/</code> is a route group — parentheses mean it does not appear in the path. Dynamic segments are <code>[id]</code>, catch-alls <code>[...path]</code>.<br>Two route handlers matter: <code>api/auth/[...nextauth]/route.ts</code> runs Auth.js and exchanges the OAuth token for a backend JWT in its <code>jwt</code> callback; <code>api/proxy/[...path]/route.ts</code> is the <b>BFF</b> — the browser calls it with an httpOnly cookie, and it attaches the real bearer server-side and streams the upstream body through unchanged so playground SSE survives.<br><code>dashboard/keys/actions.ts</code> holds Server Actions (<code>"use server"</code>) — server functions a form can post to directly, which work before JavaScript hydrates.</td>
+      </tr>
+      <tr>
+        <td class="nw"><code>src/api/</code></td><td><span class="chip nn">api</span></td>
+        <td><b>The React delivery layer</b>, in three groups. <code>components/</code> holds one folder per feature — api-keys, auth, billing, models, playground, theme. <code>layout/</code> holds composed page blocks (Sidebar, Topbar, UsageChart). <code>ui/</code> holds the shadcn-style primitives (button, card, dialog, input, table, tabs, toast, badge, skeleton).<br>Server Components are the default; <code>'use client'</code> appears only where state, effects, event handlers or browser APIs are genuinely needed.</td>
+      </tr>
+      <tr>
+        <td class="nw"><code>src/service/</code></td><td><span class="chip nn">service</span></td>
+        <td><b>Client-side business logic.</b> <code>model/</code> holds the domain types (ApiKey, Model, Usage, User) that the UI speaks — deliberately camelCase, independent of the wire format. <code>hooks/</code> holds stateful logic (<code>use-clipboard</code>, <code>use-debounce</code>, <code>use-streaming-chat</code>). <code>providers/</code> holds the React context providers (Auth, Query, Theme). <code>config/env.ts</code> is the zod-validated environment, split into two schemas so the <code>NEXT_PUBLIC_</code> boundary is enforced in code rather than by memory. <code>types/index.ts</code> is the barrel re-export.</td>
+      </tr>
+      <tr>
+        <td class="nw"><code>src/repository/</code></td><td><span class="chip nn">repository</span></td>
+        <td><b>The transport layer.</b> <code>client.ts</code> is the <code>ApiClient</code>: retry on idempotent verbs only, exponential backoff with jitter, a 30 s timeout, and W3C <code>traceparent</code> injection on the server side. <code>api-key.ts</code>, <code>model.ts</code>, <code>usage.ts</code>, <code>user.ts</code> are typed fetchers that also <b>normalise the wire format</b> — <code>input_per_million</code> becomes <code>inputPerMillion</code> — so no component ever branches on transport conventions. <code>errors.ts</code> holds the typed error classes; <code>generated/schema.ts</code> is the OpenAPI codegen output.</td>
+      </tr>
+      <tr>
+        <td class="nw"><code>src/shared/</code></td><td><span class="chip nn">shared</span></td>
+        <td><code>cn.ts</code> (class-name merging), <code>format.ts</code> (money, tokens, dates), <code>logger.ts</code> (pino).</td>
+      </tr>
+      <tr>
+        <td class="nw"><code>src/types/</code></td><td><span class="chip nn">shared</span></td>
+        <td><code>next-auth.d.ts</code> — module augmentation declaring <code>backendJwt</code>, <code>userId</code>, <code>orgId</code> and <code>role</code> on <code>Session</code>, so server actions read them without casting.</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <p>Root-level: <code>middleware.ts</code> is an edge auth gate that checks session-cookie <em>presence</em> only — deliberately cheap, with the real signature and role checks in the RSC layer. <code>instrumentation.ts</code> is opt-in OTel. <code>next.config.ts</code> sets standalone output and OWASP security headers (no CSP yet).</p>
+</section>
+
+<!-- ══════════ CLI ══════════ -->
+<section class="part" id="p4">
+  <h2><span class="n">04</span> cli</h2>
+
+  <div class="tw"><table>
+    <thead><tr><th>Folder</th><th>Tier</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>src/cli.ts</code></td><td>entry</td><td>Builds the commander program, applies global options (<code>--json</code>, <code>--no-color</code>, <code>--debug</code>, <code>--base-url</code>) and lets each command register itself. Runs <code>main()</code> only when invoked as the entry script, so importing it in a test does not execute the CLI.</td></tr>
+      <tr><td class="nw"><code>src/api/</code></td><td><span class="chip nn">api</span></td>
+      <td>One module per command — <code>login</code>, <code>logout</code>, <code>models</code>, <code>chat</code>, <code>usage</code>, <code>keys</code> — plus <code>output.ts</code> for table and JSON rendering. Each exports a <code>registerX(program)</code> function, the same registry idea as the provider adapters.</td></tr>
+      <tr><td class="nw"><code>src/repository/</code></td><td><span class="chip nn">repository</span></td>
+      <td><code>api-client.ts</code> is the only file that knows the wire format, including SSE parsing. <code>auth.ts</code> is the most interesting file in the CLI: a <code>CredentialStore</code> interface with two implementations — the OS keychain via keytar, and an AES-256-GCM encrypted file with a scrypt-derived key for headless machines. Selection is by <em>probing</em> (call keytar once and catch the failure) rather than guessing from the platform. <code>config.ts</code> is XDG-compliant, zod-validated, and holds no secrets. <code>version.ts</code> reports CLI and Node versions.</td></tr>
+      <tr><td class="nw"><code>src/shared/</code></td><td><span class="chip nn">shared</span></td><td><code>errors.ts</code> (typed error classes and exit-code mapping), <code>logger.ts</code> (pino).</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box">
+    <span class="lbl">What the CLI proves</span>
+    <p>It never talks to the backend, Redis or PostgreSQL. Every capability reaches it through the same public API a paying customer uses — which is the best available test that the public API is actually complete.</p>
+  </div>
+</section>
+
+<!-- ══════════ SHARED ══════════ -->
+<section class="part" id="p5">
+  <h2><span class="n">05</span> shared/ — the contracts</h2>
+
+  <div class="tw"><table>
+    <thead><tr><th>Path</th><th>Generates into</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>shared/proto/auth/v1/</code></td><td>Go: <code>internal/repository/proto/</code><br>Python: <code>app/repository/grpc/gen/</code></td><td><code>ValidateKey</code>, <code>RevokeKey</code>. Carries only a digest, never a plaintext key.</td></tr>
+      <tr><td class="nw"><code>shared/proto/routing/v1/</code></td><td>both</td><td><code>ResolveModel</code>, <code>ProviderScores</code>, with a <code>RequestHints</code> message.</td></tr>
+      <tr><td class="nw"><code>shared/proto/usage/v1/</code></td><td>both</td><td><code>UsageEvent</code> — a message with no service, published to NATS.</td></tr>
+      <tr><td class="nw"><code>shared/openapi/openapi.yaml</code></td><td>Frontend: <code>src/repository/generated/schema.ts</code></td><td>478 lines, OpenAPI 3.1. The canonical public contract — FastAPI's generated schema is explicitly not the source of truth.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box warn">
+    <span class="lbl">Generated output is gitignored in both languages</span>
+    <p>Neither <code>internal/repository/proto/</code> nor <code>app/repository/grpc/gen/</code> is committed. Consequences: a fresh clone cannot build until <code>make proto</code> runs, CI regenerates on every job, and the <code>protoc-gen-go</code> plus <code>protoc-gen-go-grpc</code> plugins are a prerequisite for any Go build.</p>
+  </div>
+</section>
+
+<section class="part" id="p6">
+  <h2><span class="n">06</span> infrastructure, tools, deploy</h2>
+
+  <div class="tw"><table>
+    <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><code>infrastructure/kubernetes/base/</code></td><td>Namespace, secrets (as Vault-backed <code>ExternalSecret</code> CRs), ingress, ServiceMonitor, PrometheusRule, and per-workload folders for gateway-go, backend-python, celery worker, celery beat and frontend-web — each with deployment, service, HPA, PDB, NetworkPolicy and ServiceAccount. Plus in-cluster Postgres (Spilo/Patroni), Redis and NATS StatefulSets.</td></tr>
+      <tr><td class="nw"><code>infrastructure/kubernetes/overlays/</code></td><td><code>dev</code>, <code>staging</code>, <code>prod</code> and <code>minikube</code>. The minikube overlay strips the four CRD-dependent resources, substitutes plain Secrets, replaces Spilo with plain <code>pgvector/pgvector:pg16</code>, shrinks the stateful infra to laptop size and collapses the ingress onto one host.</td></tr>
+      <tr><td class="nw"><code>infrastructure/helm/openrouter/</code></td><td>One chart serving two opposite deployments — <code>values-prod.yaml</code> for the SaaS, <code>values-self-hosted.yaml</code> for air-gapped installs — with external-secrets.io integration.</td></tr>
+      <tr><td class="nw"><code>infrastructure/terraform/</code></td><td>AWS reference: VPC across three AZs → EKS → RDS → ElastiCache → S3. The dev environment flags <code>single_nat_gateway = true</code> as a deliberate cost-versus-availability trade.</td></tr>
+      <tr><td class="nw"><code>infrastructure/observability/</code></td><td>Prometheus (scrape config, recording rules, alerts), Grafana (provisioning plus gateway and backend dashboards), Loki, Promtail, Tempo, Alertmanager.</td></tr>
+      <tr><td class="nw"><code>deploy/aws/</code></td><td>Single-server EC2: <code>setup-server.sh</code> provisions, <code>deploy.sh</code> ships, <code>docker-compose.aws.yml</code> runs, <code>Caddyfile</code> terminates TLS, <code>backup-db.sh</code> dumps.</td></tr>
+      <tr><td class="nw"><code>tools/mock-providers/</code></td><td>FastAPI service impersonating OpenAI, Anthropic and Google, with a control plane for injecting latency and failures. Point <code>providers.yaml</code> at it and the gateway works with no real keys and no spend.</td></tr>
+      <tr><td class="nw"><code>tools/load-tests/</code></td><td>k6: smoke, load, stress, spike, soak, streaming and a Gemma/Qwen scenario, sharing options, thresholds and helper libraries, plus a Grafana dashboard.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="part" id="p7">
+  <h2><span class="n">07</span> Import rules, and where new code goes</h2>
+
+  <h3><span class="n">7.1</span> The matrix</h3>
+  <div class="tw"><table>
+    <thead><tr><th>From ↓ may import →</th><th>api</th><th>service</th><th>repository</th><th>shared</th><th>third-party</th></tr></thead>
+    <tbody>
+      <tr><td><b>api</b></td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td></tr>
+      <tr><td><b>service</b></td><td class="n2">no</td><td class="y">yes</td><td class="p2">interfaces only</td><td class="y">yes</td><td class="p2">avoid</td></tr>
+      <tr><td><b>repository</b></td><td class="n2">no</td><td class="p2">interfaces only</td><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td></tr>
+      <tr><td><b>shared</b></td><td class="n2">no</td><td class="n2">no</td><td class="n2">no</td><td class="y">yes</td><td class="p2">minimal</td></tr>
+    </tbody>
+  </table></div>
+
+  <p>"Interfaces only" is the dependency-inversion seam. <code>service/domain/repositories.py</code> declares what persistence must do; <code>app/repository/*.py</code> implements it. The service tier depends on its own abstraction, and the repository tier depends on that same abstraction — so both arrows point inward and neither imports the other's concrete types.</p>
+
+  <div class="box">
+    <span class="lbl">The Go trick worth copying</span>
+    <p>When <code>repository/adapters</code> needed a <code>ProviderConfig</code> that <code>service/router</code> owned, the fix was not to relax the rule — it was to move the <em>behaviourless shape</em> into <code>shared/model</code>. Types with no behaviour create no coupling, so all three tiers can share a vocabulary without any of them importing another. If you hit the same wall, that is the move.</p>
+  </div>
+
+  <h3><span class="n">7.2</span> Where does my new code go?</h3>
+  <div class="tw"><table>
+    <thead><tr><th>You are adding…</th><th>Tier</th><th>Concretely</th></tr></thead>
+    <tbody>
+      <tr><td>A new HTTP endpoint</td><td>api</td><td>Go: a handler in <code>api/handlers</code> and a route in <code>api/server</code>. Python: a route module under <code>api/routes/</code> plus a line in its <code>__init__.py</code>.</td></tr>
+      <tr><td>A new provider</td><td>repository</td><td>If it speaks OpenAI's format: a config block in <code>providers.yaml</code> and one line in the proxy's adapter map. If not: a new adapter file implementing the interface.</td></tr>
+      <tr><td>A new business rule</td><td>service</td><td>On the entity that owns the data if it is an invariant; in a service method if it orchestrates several entities.</td></tr>
+      <tr><td>A new routing algorithm</td><td>service</td><td>A file in <code>service/strategies/</code> implementing <code>Strategy</code>. No existing file needs editing — that is the Open/Closed principle actually paying off.</td></tr>
+      <tr><td>A new background job</td><td>repository</td><td>A task in <code>repository/tasks/</code>, registered via the Celery <code>include</code> list. Make it idempotent — <code>acks_late</code> means at-least-once.</td></tr>
+      <tr><td>A new table</td><td>repository</td><td>An ORM model, an Alembic migration, a repository implementation, and an abstract interface in <code>service/domain/repositories.py</code> — in that dependency order.</td></tr>
+      <tr><td>A new secret or setting</td><td>shared</td><td>A field on the settings class, a line in <code>.env.example</code>, and — if it is deployed — an entry in the k8s secret or configmap.</td></tr>
+      <tr><td>A new UI screen</td><td>api</td><td>A route folder under <code>src/app/</code>, components under <code>src/api/components/</code>, and a typed fetcher under <code>src/repository/</code> if it needs data.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+
+<footer class="colophon">
+  <span>Package Reference · 2 of 3</span>
+  <span>Next: <a href="03-language-boundaries.html">Language Boundaries</a></span>
+  <span>Verified against the working tree, 2026-09-24</span>
+</footer>
+
+</div>
+</body>
+</html>

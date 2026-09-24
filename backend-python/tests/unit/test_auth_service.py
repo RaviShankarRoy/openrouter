@@ -10,7 +10,7 @@ import pytest
 from app.service.auth_service import AuthService, CreateKeyCommand
 from app.service.uow import UnitOfWork
 from app.service.domain.entities import APIKey
-from app.service.domain.errors import InvalidApiKey, NotFound
+from app.service.domain.errors import Forbidden, InvalidApiKey, NotFound
 from app.service.domain.repositories import APIKeyRepository
 
 
@@ -105,3 +105,70 @@ async def test_revoke_unknown_raises() -> None:
     svc = AuthService(_FakeUoW())
     with pytest.raises(NotFound):
         await svc.revoke_key(uuid4(), reason="manual")
+
+
+@pytest.mark.asyncio
+async def test_revoke_key_refuses_cross_tenant_revocation() -> None:
+    """A caller scoped to org A must not be able to revoke org B's key.
+
+    Broken Object Level Authorization (OWASP API1:2023). `revoke_key` loads the
+    key, uses it only for a None check, then revokes — the key's `org_id` is
+    never compared against the caller. There is no caller identity in the
+    signature at all, so the method cannot authorize even in principle: anyone
+    who learns or enumerates a key id can revoke another tenant's key.
+
+    This asserts the behaviour we require, so it is RED until Phase 4 adds the
+    ownership check. Expected shape of the fix: an explicit caller org argument
+    that raises Forbidden (or NotFound, to avoid confirming the id exists) when
+    it does not match the key's owner.
+    """
+    uow = _FakeUoW()
+    svc = AuthService(uow)
+
+    victim = await svc.create_key(
+        CreateKeyCommand(org_id=uuid4(), user_id=uuid4(), name="victim-key")
+    )
+    attacker_org_id = uuid4()
+    assert attacker_org_id != victim.key.org_id
+
+    try:
+        await svc.revoke_key(
+            victim.key.id, reason="attacker", caller_org_id=attacker_org_id
+        )
+    except TypeError as exc:
+        pytest.fail(
+            "revoke_key takes no caller identity, so cross-tenant revocation "
+            f"cannot be refused: {exc}"
+        )
+    except (Forbidden, NotFound):
+        pass  # Correct: the cross-tenant caller was refused.
+
+    surviving = await uow.api_keys.get(victim.key.id)
+    assert surviving is not None
+    assert surviving.revoked_at is None, (
+        "victim's key was revoked by a caller belonging to a different org"
+    )
+
+
+@pytest.mark.asyncio
+async def test_revoke_key_allows_the_owning_org() -> None:
+    """The legitimate owner must still be able to revoke. Guards the fix.
+
+    Written alongside the BOLA test so that Phase 4 cannot "fix" the
+    vulnerability by refusing every revocation.
+    """
+    uow = _FakeUoW()
+    svc = AuthService(uow)
+    org_id = uuid4()
+    created = await svc.create_key(
+        CreateKeyCommand(org_id=org_id, user_id=uuid4(), name="own-key")
+    )
+
+    try:
+        await svc.revoke_key(created.key.id, reason="rotated", caller_org_id=org_id)
+    except TypeError:
+        pytest.skip("revoke_key has no caller-identity parameter yet (see BOLA test)")
+
+    revoked = await uow.api_keys.get(created.key.id)
+    assert revoked is not None
+    assert revoked.revoked_at is not None, "owner's own revocation did not take effect"
