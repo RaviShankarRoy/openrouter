@@ -5,7 +5,9 @@ import path from "node:path";
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: "jsdom",
+    // Must match the package.json devDependency: happy-dom is declared and
+    // locked, jsdom is not — asking for "jsdom" here made the suite unrunnable.
+    environment: "happy-dom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     coverage: {
